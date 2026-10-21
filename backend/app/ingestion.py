@@ -14,6 +14,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .models import Repository, RepositorySnapshot, SourceFile
+from .parsing import clear_parse_results
 from .schemas import RepositoryCreate
 
 IGNORED_DIRECTORIES = {
@@ -180,6 +181,7 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
         branch = read_git(path, "symbolic-ref", "--short", "HEAD").decode("utf-8").strip()
 
     # Replace the snapshot in one transaction, after clone cleanup succeeds.
+    clear_parse_results(session, repository.id)
     session.execute(delete(SourceFile).where(SourceFile.repository_id == repository.id))
     snapshot = session.get(RepositorySnapshot, repository.id)
     if snapshot is None:

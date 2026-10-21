@@ -68,3 +68,45 @@ class FileRead(BaseModel):
     language: str
     content_hash: str
     line_count: int
+
+
+class SymbolRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    file_id: int
+    name: str
+    qualified_name: str
+    parent_qualified_name: str | None
+    symbol_type: str
+    start_line: int
+    end_line: int
+    signature: str
+
+
+class ParseSnapshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    repository_id: int
+    commit_sha: str
+    parsed_at: datetime
+    file_count: int
+    symbol_count: int
+    functions: int
+    classes: int
+    methods: int
+    imports: int
+    parse_error_files: int
+
+    @field_validator("parsed_at")
+    @classmethod
+    def restore_sqlite_timezone(cls, value: datetime) -> datetime:
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+class FileParseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    file_id: int
+    has_parse_errors: bool
+    symbol_count: int

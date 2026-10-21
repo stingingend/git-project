@@ -111,6 +111,24 @@ def test_snapshot_survives_restart(database_url, local_clone):
         assert len(second.get(f"/repositories/{repository_id}/files").json()) == 3
 
 
+def test_reingestion_invalidates_symbols_and_parse_metadata(client, local_clone, git_repository):
+    (git_repository / "src/app.py").write_bytes(b"def hello():\n    return True\n")
+    subprocess.run(["git", "-C", str(git_repository), "-c", "user.name=Test",
+                    "-c", "user.email=test@example.com", "commit", "-am", "add definition"],
+                   check=True, capture_output=True)
+    repository_id = register(client)
+    prefix = f"/repositories/{repository_id}"
+    assert client.post(prefix + "/ingest").status_code == 200
+    assert client.post(prefix + "/parse").status_code == 200
+    assert len(client.get(prefix + "/symbols").json()) == 1
+    assert client.get(prefix + "/parse").status_code == 200
+    assert client.post(prefix + "/ingest").status_code == 200
+    assert client.get(prefix + "/parse").status_code == 404
+    assert client.get(prefix + "/parse/files").status_code == 404
+    assert client.get(prefix + "/symbols").json() == []
+    assert client.get(prefix).json()["status"] == "ingested"
+
+
 def test_failed_reingestion_preserves_previous_snapshot(client, local_clone, monkeypatch):
     repository_id = register(client)
     prefix = f"/repositories/{repository_id}"
@@ -144,6 +162,7 @@ def test_database_write_failure_rolls_back_snapshot_replacement(client, local_cl
     repository_id = register(client)
     prefix = f"/repositories/{repository_id}"
     snapshot = client.post(prefix + "/ingest").json()
+    parsed = client.post(prefix + "/parse").json()
     files = client.get(prefix + "/files").json()
     engine = client.app.state.sessions.kw["bind"]
     with engine.begin() as connection:
@@ -156,7 +175,8 @@ def test_database_write_failure_rolls_back_snapshot_replacement(client, local_cl
             client.post(prefix + "/ingest")
         assert client.get(prefix + "/files").json() == files
         assert client.get(prefix + "/snapshot").json() == snapshot
-        assert client.get(prefix).json()["status"] == "ingested"
+        assert client.get(prefix).json()["status"] == "parsed"
+        assert client.get(prefix + "/parse").json() == parsed
         assert not client.app.state.ingestion_lock.locked()
     finally:
         with engine.begin() as connection:

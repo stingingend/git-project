@@ -4,9 +4,9 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: GitHub ingestion and file discovery
+## Current milestone: Python symbol extraction
 
-The API can register a GitHub repository, clone it temporarily, discover tracked Python files, and store a source snapshot in SQLite. The snapshot includes file hashes, line counts, the default branch, and commit hash. Parsing and the frontend are upcoming milestones.
+The API can register a GitHub repository, ingest its tracked Python source, and parse the saved snapshot with Tree-sitter. It stores functions, classes, methods, and import statements with signatures, qualified names, and source line ranges. The frontend and relationship graph come later.
 
 ### Run locally
 
@@ -28,7 +28,7 @@ $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 
 PostgreSQL setup and schema migrations will come in later milestones. For now, startup creates missing tables; it does not migrate existing tables when their columns change.
 
-This milestone adds `repository_snapshots` and `source_files` tables without changing the existing `repositories` table. Restart the API after updating; startup creates the new tables alongside existing registered repositories.
+Startup creates the new tables alongside existing data. This milestone adds `symbols`, `file_parses`, and `parse_snapshots` without altering the existing tables. After pulling updates, reinstall the backend dependencies and restart the API.
 
 Expected response from `GET /health`:
 
@@ -90,9 +90,37 @@ Ingestion runs in the request. Use one API process/worker: a per-process lock al
 - Up to 20,000 tracked entries, 2,000 eligible Python files, and 25 MB eligible Python source. Individual files over 1 MB are skipped.
 - Tracked regular `.py` files only. Git symlinks and generated/vendor/virtual-environment/cache folders are skipped. Untracked local files are never scanned.
 - UTF-8 and UTF-8 BOM source only; unsupported encodings are skipped. The skipped count refers to Python files excluded by these rules.
-- Source text is saved for the next parsing milestone. The file-list API exposes metadata, not source text.
+- Source text is saved for parsing. The file-list API exposes metadata, not source text.
 
 This is still a local development API. Public hosting needs authentication, rate limiting, and stronger worker isolation.
+
+### Parse the saved source
+
+After a successful ingestion, use its repository ID:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/repositories/1/parse'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/parse'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/parse/files'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/symbols?kind=method&limit=100&offset=0'
+```
+
+| Endpoint | Result |
+| --- | --- |
+| `POST /repositories/{id}/parse` | Parse saved Python source and atomically save results |
+| `GET /repositories/{id}/parse` | Counts by symbol type, commit, timestamp, and number of files with syntax errors |
+| `GET /repositories/{id}/parse/files` | Per-file symbol counts and syntax-error flags |
+| `GET /repositories/{id}/symbols` | Symbols ordered by file and source position; optional `file_id` and `kind` filters |
+
+Symbol listing defaults to 100 records per page. Use `limit` (1–500) and `offset` (0 or greater) to inspect additional results. The allowed kinds are `function`, `class`, `method`, and `import`.
+
+Parsing works entirely from saved source; it does not contact GitHub or execute code. The repository becomes `parsed`, even when Tree-sitter reports recoverable syntax errors. Check `parse_error_files` and the per-file flags: recovered definitions may be incomplete. The parse result records the same commit as the ingested snapshot.
+
+Re-parsing replaces old results in a transaction. Re-ingestion clears old symbols and parse metadata before replacing source, returning the status to `ingested`. Ingestion and parsing share the same per-process lock; use one worker. Parsing before ingestion returns `409`, while a symbol-limit failure returns `422` and preserves earlier results. The repository-wide extraction limit is 100,000 symbols.
+
+Qualified names use `path.py::Class.method` or `path.py::function`. Start and end lines are 1-based and inclusive, starting at the `def`, `async def`, or `class` line rather than decorators. Imports count statements, including `from __future__` and imports inside functions; importing several names in one statement counts once. Repeated overloads keep separate records with the same qualified name and different source ranges. Lambdas and variable assignments are not extracted in this milestone.
+
+Tree-sitter is pinned to 0.25.2 with the Python grammar at 0.25.0. Earlier local validation found a native traversal crash with the 0.26.0 Windows wheel. Check real repositories before changing these pins.
 
 ### Run the tests
 
@@ -108,12 +136,16 @@ From the repository root:
 2. The ingestion service clones it into a temporary directory without checking it out.
 3. `git ls-tree` discovers tracked entries; `git cat-file` reads eligible blobs from that commit.
 4. SQLAlchemy saves the source files, snapshot metadata, and `ingested` status in one transaction.
-5. Tests use real local Git fixtures and isolated databases. Transport tests simulate clone failures and limits without depending on GitHub.
+5. Tree-sitter parses the saved source into a syntax tree. An iterative traversal extracts definitions and their enclosing scopes.
+6. A second transaction saves symbols, per-file parse flags, summary counts, and the `parsed` status.
+7. Tests use real local Git fixtures and isolated databases. Parser fixtures exercise scopes, signatures, recovery, limits, and snapshot invalidation.
 
 The `/health` endpoint checks that the API process responds. It does not check the database or GitHub.
 
 See [the metadata walkthrough](docs/metadata-storage.md) for an explanation of tables, sessions, transactions, and the application factory.
 
 See [the ingestion walkthrough](docs/ingestion.md) for Git objects, source discovery, and snapshot replacement.
+
+See [the parsing walkthrough](docs/parsing.md) for syntax trees, scope tracking, symbol records, and recovery behavior.
 
 See [the roadmap](docs/roadmap.md) for the next steps.
