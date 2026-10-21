@@ -1853,3 +1853,17 @@ button.symbol-row:hover {
     padding: 9px 10px;
   }
 }
+.relationships { margin-top: 18px; border: 1px solid #34412c; background: #131e10; border-radius: 8px; overflow: hidden; }
+.relationship-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px; }
+.relationship-heading h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; }
+.relationship-heading > span, .relationship-help { color: #99a58e; font-size: 11px; }
+.relationship-controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; }
+.relationship-controls select { background: #1d2b17; color: #e2e8da; border: 1px solid #405036; border-radius: 5px; padding: 8px; max-width: 100%; }
+.relationship-help { margin: 12px 16px; line-height: 1.6; }
+.relationship-list { max-height: 320px; overflow: auto; }
+.relationship-row { padding: 12px 16px; border-top: 1px solid #2d3a25; font-size: 11px; }
+.relationship-row > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; overflow-wrap: anywhere; }
+.relationship-row strong { font-weight: 500; color: #b9c6ad; }
+.relationship-row small { color: #a4af98; display: inline-block; margin-top: 8px; }
+.relationship-row button { float: right; margin-top: 5px; background: #28391d; border: 1px solid #405036; color: #d7e5c7; padding: 5px 8px; border-radius: 4px; }
+@media (max-width: 600px) { .relationship-heading > span { display: none; } }

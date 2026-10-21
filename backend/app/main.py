@@ -13,6 +13,8 @@ from .ingestion import IngestionError, ingest_repository
 from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
 from .parsing import ParsingError, parse_repository
+from .relationships import file_relationships
+from .schemas import RelationshipPageRead
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
                       SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
@@ -45,7 +47,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.7.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.8.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -197,6 +199,18 @@ def create_app(database_url: str | None = None) -> FastAPI:
         result = search_symbols(session, repository_id, query, kind, limit, offset)
         if result is None:
             raise HTTPException(404, "Repository not found.")
+        return result
+
+    @application.get("/repositories/{repository_id}/files/{file_id}/relationships",
+                     response_model=RelationshipPageRead)
+    def relationships(repository_id: int, file_id: int,
+                      kind: Literal["contains", "imports"] | None = None,
+                      direction: Literal["outgoing", "incoming"] = "outgoing",
+                      limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0),
+                      session: Session = Depends(get_index_session)):
+        result = file_relationships(session, repository_id, file_id, kind, direction, limit, offset)
+        if result is None:
+            raise HTTPException(404, "File not found in this repository.")
         return result
 
     return application

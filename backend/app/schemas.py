@@ -158,3 +158,29 @@ class SymbolSearchRead(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RelationshipRead(BaseModel):
+    id: int
+    kind: str
+    label: str
+    resolution: str
+    source_name: str
+    source_symbol_id: int | None
+    target_name: str
+    target_symbol_id: int | None
+    file_id: int
+    path: str
+    start_line: int
+    target_file_id: int | None
+    target_path: str | None
+
+
+class RelationshipPageRead(BaseModel):
+    file_id: int
+    ready: bool
+    commit_sha: str | None
+    items: list[RelationshipRead]
+    total: int
+    limit: int
+    offset: int

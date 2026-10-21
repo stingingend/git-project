@@ -79,3 +79,24 @@ class ParseSnapshot(Base):
     methods: Mapped[int]
     imports: Mapped[int]
     parse_error_files: Mapped[int]
+
+
+class Relationship(Base):
+    __tablename__ = "relationships"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("source_files.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    source_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    target_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    target_file_id: Mapped[int | None] = mapped_column(ForeignKey("source_files.id"))
+    label: Mapped[str] = mapped_column(Text)
+    resolution: Mapped[str] = mapped_column(String(30))
+
+
+class RelationshipSnapshot(Base):
+    __tablename__ = "relationship_snapshots"
+
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
+    commit_sha: Mapped[str] = mapped_column(String(40))

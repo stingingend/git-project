@@ -4,11 +4,11 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: symbol search and source navigation
+## Current milestone: structural relationships
 
-The Next.js interface now searches the saved repository index by symbol name, scope, signature, or file path. Select a search result or a file symbol to open its source, jump to the right page, and highlight the definition. FastAPI still handles ingestion, parsing, storage, and queries. Structural relationships and graphs come next.
+The Next.js interface now shows containment and Python module dependencies for each selected file. Browse outgoing imports or incoming importers and open linked source files. Unresolved and ambiguous imports are labeled explicitly. Symbol search and source highlighting remain available. See [the relationship walkthrough](docs/relationships.md) for supported layouts and limits.
 
-![CodeAtlas symbol search and source navigation](docs/symbol-search-preview.png)
+![CodeAtlas file relationships](docs/relationships-preview.png)
 
 ### Run locally
 
@@ -44,7 +44,7 @@ $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 
 PostgreSQL setup and schema migrations will come in later milestones. For now, startup creates missing tables; it does not migrate existing tables when their columns change.
 
-Startup creates missing tables alongside existing data. The frontend milestone does not change the database schema or existing API contracts. After pulling updates, install the frontend dependencies and restart the servers.
+Startup creates missing tables alongside existing data. After pulling updates, install dependencies and restart the servers. Re-index previously parsed repositories to populate the new relationship tables.
 
 Expected response from `GET /health`:
 

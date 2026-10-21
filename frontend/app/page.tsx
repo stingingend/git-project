@@ -35,6 +35,7 @@ import type {
 } from "../lib/types";
 import { SourceViewer } from "../components/source-viewer";
 import { SymbolSearch } from "../components/symbol-search";
+import { Relationships } from "../components/relationships";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "ingesting", "parsing"];
@@ -329,7 +330,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.7</span>
+            Local development <span className="version">v0.8</span>
           </span>
         </header>
         <div className="content">
@@ -715,6 +716,15 @@ export default function Home() {
                   )}
                 </div>
               </section>
+              {detail && <Relationships
+                key={`relations:${selectedId}:${revision}:${detail.file.id}:${detail.commit_sha}`}
+                repositoryId={selectedId!}
+                fileId={detail.file.id}
+                filePath={detail.file.path}
+                commitSha={detail.commit_sha}
+                busy={fileLoading || busy}
+                openFile={(id) => void openFile(id)}
+              />}
             </>
           ) : selectedId !== null ? (
             <div className="empty-workspace">

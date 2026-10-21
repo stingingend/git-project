@@ -27,6 +27,8 @@ class ExtractedSymbol:
 class ParsedFile:
     symbols: list[ExtractedSymbol] = field(default_factory=list)
     has_parse_errors: bool = False
+    # Identity preserves the exact enclosing definition even for repeated names.
+    parents: list[int | None] = field(default_factory=list)
 
 
 def parse_python(source: str, path: str, max_symbols: int = 100_000) -> ParsedFile:
@@ -41,6 +43,7 @@ def parse_python(source: str, path: str, max_symbols: int = 100_000) -> ParsedFi
     # Each entry carries its nearest enclosing definition. Iteration avoids the
     # Python recursion limit for deeply nested trees and large expressions.
     stack = [(tree.root_node, None)]
+    positions = {}
     while stack:
         node, parent = stack.pop()
         next_parent = parent
@@ -58,12 +61,15 @@ def parse_python(source: str, path: str, max_symbols: int = 100_000) -> ParsedFi
                 next_parent = ExtractedSymbol(name, qualified, parent_name, kind,
                     node.start_point.row + 1, node.end_point.row + 1, signature)
                 result.symbols.append(next_parent)
+                result.parents.append(positions[id(parent)] if parent else None)
+                positions[id(next_parent)] = len(result.symbols) - 1
         elif node.type in IMPORT_NODES:
             statement = text(node)
             result.symbols.append(ExtractedSymbol(statement,
                 f"{path}::import@{node.start_point.row + 1}:{node.start_point.column}",
                 parent.qualified_name if parent else None, "import",
                 node.start_point.row + 1, node.end_point.row + 1, statement))
+            result.parents.append(positions[id(parent)] if parent else None)
         if len(result.symbols) > max_symbols:
             raise ParsingError("Repository exceeds the 100,000 symbol limit.")
         stack.extend((child, next_parent) for child in reversed(node.named_children))

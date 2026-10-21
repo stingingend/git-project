@@ -86,3 +86,23 @@ export type SourceSelection = {
   commit_sha: string;
   request: number;
 };
+
+export type RelationshipPage = {
+  ready: boolean;
+  commit_sha: string | null;
+  total: number;
+  offset: number;
+  limit: number;
+  items: {
+    id: number;
+    kind: string;
+    resolution: string;
+    source_name: string;
+    target_name: string;
+    file_id: number;
+    path: string;
+    start_line: number;
+    target_file_id: number | null;
+    target_path: string | null;
+  }[];
+};

@@ -6,11 +6,15 @@ from sqlalchemy.orm import Session
 
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
 from .parser import ParsingError, parse_python
+from .relationships import build_relationships
+from .models import Relationship, RelationshipSnapshot
 
 MAX_SYMBOLS = 100_000
 
 
 def clear_parse_results(session: Session, repository_id: int) -> None:
+    session.execute(delete(Relationship).where(Relationship.repository_id == repository_id))
+    session.execute(delete(RelationshipSnapshot).where(RelationshipSnapshot.repository_id == repository_id))
     file_ids = select(SourceFile.id).where(SourceFile.repository_id == repository_id)
     session.execute(delete(Symbol).where(Symbol.file_id.in_(file_ids)))
     session.execute(delete(FileParse).where(FileParse.file_id.in_(file_ids)))
@@ -24,15 +28,18 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
     extracted = []
     file_results = []
     counts = Counter()
+    parsed_files = []
     files = session.scalars(select(SourceFile).where(
-        SourceFile.repository_id == repository.id).order_by(SourceFile.path))
+        SourceFile.repository_id == repository.id).order_by(SourceFile.path)).all()
     for file in files:
         result = parse_python(file.source, file.path, max_symbols=MAX_SYMBOLS - len(extracted))
+        start = len(extracted)
         file_results.append(FileParse(file_id=file.id, has_parse_errors=result.has_parse_errors,
                                       symbol_count=len(result.symbols)))
         for symbol in result.symbols:
             counts[symbol.symbol_type] += 1
             extracted.append(Symbol(file_id=file.id, **vars(symbol)))
+        parsed_files.append((file, result, extracted[start:]))
 
     # Complete extraction before replacing old results; commit is owned by the route.
     clear_parse_results(session, repository.id)
@@ -42,5 +49,7 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
         imports=counts["import"], parse_error_files=sum(file.has_parse_errors for file in file_results))
     session.add_all([parsed, *file_results, *extracted])
     repository.status = "parsed"
+    session.flush()
+    build_relationships(session, repository.id, snapshot.commit_sha, files, parsed_files)
     session.flush()
     return parsed
