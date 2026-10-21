@@ -2,6 +2,8 @@
 
 Select a Python file in the repository explorer and scroll to **Explore the connections**. The selected file sits in the center; incoming importers appear on the left and dependencies on the right. Click a connected file to load its source and make it the new center. Buttons support keyboard navigation, and a screen-reader list describes the directed links.
 
+Navigation keeps the current graph and source mounted while requests are pending. Shared nodes move between positions over 420 ms; new/departing nodes and links fade. Arrow endpoints follow the same interpolated coordinates as the cards. A fixed-height viewport prevents graph size changes from shifting the page, and the diagram scrolls internally when the new center would be outside the visible area. Subtle moving dashes indicate import direction. Reduced-motion preferences disable movement, scrolling animation, and flowing dashes; changing that preference during a transition finishes it immediately.
+
 Arrows run from the importer to the imported module file. Repeated import links between a pair of files are combined and labeled with a count. Counts represent saved import bindings, not unique import statements: `from module import a, b` contributes two links. A file connected in both directions appears on the dependency side, with two separate arrows and an explicit label.
 
 The view shows only the selected file's immediate local dependencies and importers, not transitive relationships or calls. It includes up to 12 unique neighboring files, ordered by path. The summary shows the full neighbor count and explains truncation. File relationships below the graph remains paginated for browsing all individual imports. The diagram scrolls for narrow screens and large neighborhoods.

@@ -199,7 +199,7 @@ export default function Home() {
     if (!preserveSelection) setSelection(null);
     setActiveFile(fileId);
     setFileLoading(true);
-    if (fileId !== activeFile) setDetail(null);
+    // Keep the current source and graph mounted while the next file loads.
     try {
       const data = await api.file(selectedId, fileId, offset);
       if (request === fileRequest.current) setDetail(data);
@@ -718,7 +718,7 @@ export default function Home() {
                 </div>
               </section>
               {detail && <DependencyGraph
-                key={`graph:${selectedId}:${revision}:${detail.file.id}:${detail.commit_sha}`}
+                key={`graph:${selectedId}:${revision}:${detail.commit_sha}`}
                 repositoryId={selectedId!}
                 fileId={detail.file.id}
                 filePath={detail.file.path}
