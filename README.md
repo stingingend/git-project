@@ -17,7 +17,7 @@ docker compose --env-file .env.docker up --build --wait
 
 Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
-![CodeAtlas file relationships](docs/relationships-preview.png)
+![CodeAtlas refreshed workspace](docs/visual-refresh-preview.png)
 
 ### Run locally
 
