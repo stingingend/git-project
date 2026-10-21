@@ -68,10 +68,11 @@ def test_symbol_limit_preserves_previous_results(client, ingested_repository, mo
     assert not client.app.state.ingestion_lock.locked()
 
 
-def test_database_failure_rolls_back_parse_replacement(client, ingested_repository):
+def test_database_failure_rolls_back_parse_replacement(client, ingested_repository, monkeypatch):
     prefix = f"/repositories/{ingested_repository}"
     parsed = client.post(prefix + "/parse").json()
     symbols = client.get(prefix + "/symbols").json()
+    monkeypatch.setattr("app.parsing.INDEX_FORMAT_VERSION", "upgrade")
     engine = client.app.state.sessions.kw["bind"]
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TRIGGER reject_symbols BEFORE INSERT ON symbols "

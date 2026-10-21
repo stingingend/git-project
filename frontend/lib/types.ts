@@ -58,6 +58,15 @@ export type FileDetail = {
 };
 export type Stage = "registering" | "queued" | "ingesting" | "parsing";
 
+export type IndexChanges = {
+  added: number;
+  changed: number;
+  removed: number;
+  unchanged: number;
+  parsed_files: number | null;
+  reused_files: number | null;
+};
+
 export type IndexJob = {
   id: string;
   repository_id: number;
@@ -68,6 +77,7 @@ export type IndexJob = {
   finished_at: string | null;
   error: string | null;
   commit_sha: string | null;
+  changes?: IndexChanges | null;
 };
 
 export type SearchHit = {

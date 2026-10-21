@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from datetime import datetime, timezone
 
 from app.main import create_app
-from app.models import Repository, RepositorySnapshot, SourceFile
+from app.models import Repository, RepositorySnapshot, SourceFile, IndexChanges
 
 
 @pytest.fixture
@@ -32,5 +32,6 @@ def ingested_repository(client):
             SourceFile(repository_id=repository_id, path="broken.py", content_hash="c" * 64,
                 line_count=1, source="def broken(:\n"),
         ])
+        session.add(IndexChanges(repository_id=repository_id, added=2, changed=0, removed=0, unchanged=0))
         session.commit()
     return repository_id

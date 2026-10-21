@@ -297,3 +297,11 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
 .job-state.failed { color: #9f2c32; background: #fff0f1; }
 .job-state.interrupted { color: #845910; background: #fff4de; }
 @media (max-width: 600px) { .job-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .job-reference { font-size: 10px; line-height: 1.7; } }
+
+/* Incremental run summaries stay readable in the progress panel and history. */
+.index-changes { margin: 14px 0; padding: 14px 16px; background: #f0f5fb; border: 1px solid #dbe5f1; border-radius: 10px; }
+.change-counts { display: flex; flex-wrap: wrap; gap: 12px 24px; color: #52647b; font-size: 12px; }
+.change-counts span { display: flex; align-items: baseline; gap: 6px; }
+.change-counts strong { color: #183454; font-size: 19px; font-variant-numeric: tabular-nums; }
+.index-changes p { margin: 10px 0 0; font-size: 12px; color: #345778; }
+.job-history article .index-changes p { color: #345778; }

@@ -23,6 +23,7 @@ import {
   Terminal,
   X,
 } from "lucide-react";
+import { IndexChangesView } from "../components/index-changes";
 import { ApiError, activeJob, createApi, startIndexJob, loadSymbolSource } from "../lib/api";
 import type {
   FileDetail,
@@ -377,7 +378,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.12</span>
+            Local development <span className="version">v0.13</span>
           </span>
         </header>
         <div className="content">
@@ -480,6 +481,7 @@ export default function Home() {
                 </span>
               </div>
               <p className="job-reference">{job ? `Job ${job.id.slice(0, 8)} · ${jobRepository ? `${jobRepository.owner}/${jobRepository.name}` : `Repository ${job.repository_id}`} · Progress saved` : "Creating a background indexing job…"}</p>
+              {job?.changes && <IndexChangesView changes={job.changes} />}
               <ol className="job-steps">
                 {stageLabels.map((label, index) => (
                   <li
@@ -504,6 +506,7 @@ export default function Home() {
               <div><strong>{repositories.find(repo => repo.id === item.repository_id)?.name ?? `Repository ${item.repository_id}`}</strong>
                 <span className={`job-state ${item.status}`}>{item.status}</span></div>
               <small>{item.id.slice(0, 8)} · {item.stage} · {new Date(item.created_at).toLocaleString()}{item.commit_sha ? ` · ${item.commit_sha.slice(0, 7)}` : ""}</small>
+              {item.changes && <IndexChangesView changes={item.changes} />}
               {item.error && <p>{item.error}</p>}
               <button className="secondary" disabled={busy} onClick={() => { setJob(item); setSelectedId(item.repository_id); }}>View repository</button>
             </article>)}

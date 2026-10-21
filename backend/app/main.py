@@ -18,7 +18,7 @@ from .relationships import dependency_graph, file_relationships
 from .schemas import DependencyGraphRead, RelationshipPageRead
 from .schemas import CallPageRead
 from .calls import file_calls
-from .jobs import IndexingBusy, IndexWorker
+from .jobs import IndexingBusy, IndexWorker, read_jobs
 from .models import IndexJob
 from .schemas import IndexJobRead
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
@@ -60,7 +60,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.12.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.13.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -268,14 +268,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @application.get("/jobs", response_model=list[IndexJobRead], summary="Inspect recent indexing jobs")
     def recent_jobs(limit: int = Query(10, ge=1, le=50), session: Session = Depends(get_session)):
-        return session.scalars(select(IndexJob).order_by(IndexJob.created_at.desc(), IndexJob.id.desc()).limit(limit)).all()
+        jobs = session.scalars(select(IndexJob).order_by(
+            IndexJob.created_at.desc(), IndexJob.id.desc()).limit(limit)).all()
+        return read_jobs(session, jobs)
 
     @application.get("/jobs/{job_id}", response_model=IndexJobRead)
     def get_job(job_id: str, session: Session = Depends(get_session)):
         job = session.get(IndexJob, job_id)
         if job is None:
             raise HTTPException(404, "Indexing job not found.")
-        return job
+        return read_jobs(session, [job])[0]
 
     return application
 

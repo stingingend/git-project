@@ -137,3 +137,37 @@ class IndexJob(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
     commit_sha: Mapped[str | None] = mapped_column(String(40))
+
+
+class FileIndexState(Base):
+    """Versioned cache with exact symbol ordering and parent indices."""
+    __tablename__ = "file_index_states"
+
+    file_id: Mapped[int] = mapped_column(ForeignKey("source_files.id"), primary_key=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    format_version: Mapped[str] = mapped_column(String(30))
+    structure: Mapped[str] = mapped_column(Text)
+
+
+class IndexChanges(Base):
+    __tablename__ = "index_changes"
+
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
+    added: Mapped[int]
+    changed: Mapped[int]
+    removed: Mapped[int]
+    unchanged: Mapped[int]
+    parsed_files: Mapped[int | None]
+    reused_files: Mapped[int | None]
+
+
+class JobChanges(Base):
+    __tablename__ = "job_changes"
+
+    job_id: Mapped[str] = mapped_column(ForeignKey("index_jobs.id"), primary_key=True)
+    added: Mapped[int]
+    changed: Mapped[int]
+    removed: Mapped[int]
+    unchanged: Mapped[int]
+    parsed_files: Mapped[int | None]
+    reused_files: Mapped[int | None]

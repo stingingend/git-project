@@ -10,11 +10,11 @@ import subprocess
 import tempfile
 import time
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .models import Repository, RepositorySnapshot, SourceFile
-from .parsing import clear_parse_results
+from .models import Repository, RepositorySnapshot, SourceFile, IndexChanges
+from .parsing import clear_file_results, invalidate_snapshot
 from .schemas import RepositoryCreate
 
 IGNORED_DIRECTORIES = {
@@ -180,9 +180,28 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
         sha = read_git(path, "rev-parse", "HEAD").decode("ascii").strip()
         branch = read_git(path, "symbolic-ref", "--short", "HEAD").decode("utf-8").strip()
 
-    # Replace the snapshot in one transaction, after clone cleanup succeeds.
-    clear_parse_results(session, repository.id)
-    session.execute(delete(SourceFile).where(SourceFile.repository_id == repository.id))
+    # Diff after clone cleanup; unchanged source and index identities survive.
+    existing = {file.path: file for file in session.scalars(select(SourceFile).where(
+        SourceFile.repository_id == repository.id))}
+    discovered = {file.path: file for file in files}
+    removed = set(existing) - set(discovered)
+    added = set(discovered) - set(existing)
+    changed = {path for path in set(existing) & set(discovered)
+               if existing[path].content_hash != discovered[path].content_hash}
+    invalidate_snapshot(session, repository.id)
+    clear_file_results(session, [existing[path].id for path in removed | changed])
+    for path in removed:
+        session.delete(existing[path])
+    for path in changed:
+        saved, fresh = existing[path], discovered[path]
+        saved.source, saved.content_hash, saved.line_count = fresh.source, fresh.content_hash, fresh.line_count
+    changes = session.get(IndexChanges, repository.id)
+    if changes is None:
+        changes = IndexChanges(repository_id=repository.id)
+        session.add(changes)
+    changes.added, changes.changed, changes.removed = len(added), len(changed), len(removed)
+    changes.unchanged = len(files) - len(added) - len(changed)
+    changes.parsed_files = changes.reused_files = None
     snapshot = session.get(RepositorySnapshot, repository.id)
     if snapshot is None:
         snapshot = RepositorySnapshot(repository_id=repository.id)
@@ -196,7 +215,7 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
     session.add_all([
         SourceFile(repository_id=repository.id, path=file.path, source=file.source,
                    content_hash=file.content_hash, line_count=file.line_count)
-        for file in files
+        for file in files if file.path in added
     ])
     repository.status = "ingested"
     session.flush()

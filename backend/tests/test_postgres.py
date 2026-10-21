@@ -9,8 +9,9 @@ from sqlalchemy import event, select, text
 
 from app.database import create_database
 from app.main import create_app
-from app.models import RepositorySnapshot, SourceFile
+from app.models import RepositorySnapshot, SourceFile, IndexChanges
 from app.parsing import clear_parse_results
+from test_ingestion import git_repository, local_clone
 
 
 @pytest.fixture
@@ -47,6 +48,7 @@ def seed(client):
             SourceFile(repository_id=repo["id"], path="pkg/helper.py", content_hash="c" * 64,
                 line_count=1, source="def work(): return True\n"),
         ])
+        session.add(IndexChanges(repository_id=repo["id"], added=2, changed=0, removed=0, unchanged=0))
         session.commit()
     return prefix
 
@@ -141,3 +143,8 @@ def test_postgres_background_job_uses_its_own_sessions(postgres_client, monkeypa
     assert job["commit_sha"] == "a" * 40
     assert client.get(prefix + "/search", params={"q": "Service.run"}).json()["total"] == 1
     assert client.get("/jobs").json()[0]["id"] == job_id
+
+
+def test_postgres_incremental_diff_and_foreign_keys(postgres_client, local_clone, git_repository):
+    from test_incremental import verify_diff
+    verify_diff(postgres_client, git_repository)

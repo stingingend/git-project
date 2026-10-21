@@ -239,6 +239,17 @@ class CallPageRead(BaseModel):
     offset: int
 
 
+class IndexChangesRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    added: int
+    changed: int
+    removed: int
+    unchanged: int
+    parsed_files: int | None
+    reused_files: int | None
+
+
 class IndexJobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -251,6 +262,8 @@ class IndexJobRead(BaseModel):
     finished_at: datetime | None
     error: str | None
     commit_sha: str | None
+
+    changes: IndexChangesRead | None = None
 
     @field_validator("created_at", "started_at", "finished_at")
     @classmethod

@@ -4,9 +4,9 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: background indexing jobs
+## Current milestone: incremental indexing
 
-Indexing now runs in a background worker with saved progress, job history, errors, and interrupted-job recovery. Reload the page to reconnect to the most recent job; closing the tab does not cancel it. Symbol search, source navigation, approximate call analysis, and the animated dependency graph remain available. See [background jobs](docs/jobs.md) for lifecycle and limits, or [the deployment guide](docs/deployment.md) for Docker and PostgreSQL setup.
+Re-indexing compares file hashes, parses new or changed Python files, and reuses unchanged symbols and call records with stable IDs. Each background run saves its added, changed, removed, unchanged, parsed, and reused file counts. Import relationships are rebuilt against the current inventory. Existing indexes need one full parse to seed the cache. See [incremental indexing](docs/incremental.md), [background jobs](docs/jobs.md), or [the deployment guide](docs/deployment.md).
 
 With Docker Desktop running, start from the repository root:
 
@@ -17,7 +17,7 @@ docker compose --env-file .env.docker up --build --wait
 
 Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
-![CodeAtlas background indexing](docs/jobs-preview.jpg)
+![CodeAtlas incremental indexing](docs/incremental-preview.jpg)
 
 ### Run locally
 
@@ -53,7 +53,7 @@ $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 
 PostgreSQL is optional; see [the deployment guide](docs/deployment.md). Startup creates missing tables; schema migrations and data transfer between databases are future work.
 
-Startup creates missing tables alongside existing data. After pulling updates, install dependencies and restart the servers. Re-index previously parsed repositories to populate the new relationship tables.
+Startup creates missing tables alongside existing data. After pulling updates, install dependencies and restart the servers. Re-index previously parsed repositories once to populate the versioned per-file cache; subsequent runs reuse unchanged file indexes.
 
 Expected response from `GET /health`:
 

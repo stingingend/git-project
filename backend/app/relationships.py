@@ -49,9 +49,9 @@ def build_relationships(session, repository_id, commit_sha, files, parsed_files)
         if parts and all(part.isidentifier() for part in parts):
             modules[".".join(parts)].add(file.id)
     edges = []
-    for file, result, symbols in parsed_files:
+    for file, parents, symbols in parsed_files:
         for index, symbol in enumerate(symbols):
-            parent = result.parents[index]
+            parent = parents[index]
             edges.append(Relationship(repository_id=repository_id, file_id=file.id,
                 kind="contains", source_symbol_id=symbols[parent].id if parent is not None else None,
                 target_symbol_id=symbol.id, target_file_id=None,

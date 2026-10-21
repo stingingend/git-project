@@ -111,7 +111,7 @@ def test_snapshot_survives_restart(database_url, local_clone):
         assert len(second.get(f"/repositories/{repository_id}/files").json()) == 3
 
 
-def test_reingestion_invalidates_symbols_and_parse_metadata(client, local_clone, git_repository):
+def test_reingestion_invalidates_snapshot_but_preserves_unchanged_symbols(client, local_clone, git_repository):
     (git_repository / "src/app.py").write_bytes(b"def hello():\n    return True\n")
     subprocess.run(["git", "-C", str(git_repository), "-c", "user.name=Test",
                     "-c", "user.email=test@example.com", "commit", "-am", "add definition"],
@@ -126,7 +126,7 @@ def test_reingestion_invalidates_symbols_and_parse_metadata(client, local_clone,
     assert client.post(prefix + "/ingest").status_code == 200
     assert client.get(prefix + "/parse").status_code == 404
     assert client.get(prefix + "/parse/files").status_code == 404
-    assert client.get(prefix + "/symbols").json() == []
+    assert len(client.get(prefix + "/symbols").json()) == 1
     search = client.get(prefix + "/search", params={"q": "hello"}).json()
     assert search["parsed"] is False and search["items"] == []
     assert client.get(prefix).json()["status"] == "ingested"
@@ -161,12 +161,17 @@ def test_failed_first_ingestion_leaves_repository_registered(client, monkeypatch
     assert not client.app.state.ingestion_lock.locked()
 
 
-def test_database_write_failure_rolls_back_snapshot_replacement(client, local_clone):
+def test_database_write_failure_rolls_back_snapshot_replacement(client, local_clone, git_repository):
     repository_id = register(client)
     prefix = f"/repositories/{repository_id}"
     snapshot = client.post(prefix + "/ingest").json()
     parsed = client.post(prefix + "/parse").json()
     files = client.get(prefix + "/files").json()
+    (git_repository / "new.py").write_text("def added(): return True\n")
+    subprocess.run(["git", "-C", str(git_repository), "add", "new.py"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(git_repository), "-c", "user.name=Test",
+                    "-c", "user.email=test@example.com", "commit", "-m", "add source"],
+                   check=True, capture_output=True)
     engine = client.app.state.sessions.kw["bind"]
     with engine.begin() as connection:
         connection.exec_driver_sql(

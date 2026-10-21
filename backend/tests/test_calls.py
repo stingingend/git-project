@@ -118,12 +118,13 @@ def test_call_limit_preserves_previous_index_and_clear_invalidates(client, index
     assert client.get(url).json()["ready"] is False
 
 
-def test_call_write_failure_rolls_back_symbols_and_calls(client, indexed_calls):
+def test_call_write_failure_rolls_back_symbols_and_calls(client, indexed_calls, monkeypatch):
     from sqlalchemy.exc import IntegrityError
     prefix, file_id = indexed_calls
     url = prefix + f"/files/{file_id}/calls"
     before = client.get(url).json()
     symbols = client.get(prefix + "/symbols").json()
+    monkeypatch.setattr("app.parsing.INDEX_FORMAT_VERSION", "upgrade")
     engine = client.app.state.sessions.kw["bind"]
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TRIGGER reject_calls BEFORE INSERT ON call_sites "

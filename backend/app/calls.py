@@ -35,7 +35,7 @@ def match_calls(result):
         yield call, *cache[key]
 
 
-def build_calls(session, repository_id, commit_sha, parsed_files):
+def build_calls(session, repository_id, parsed_files):
     for file, result, symbols in parsed_files:
         for call, target, resolution in match_calls(result):
             session.add(CallSite(repository_id=repository_id, file_id=file.id,
@@ -43,7 +43,6 @@ def build_calls(session, repository_id, commit_sha, parsed_files):
                 target_symbol_id=symbols[target].id if target is not None else None,
                 expression=call.expression, call_type=call.call_type, resolution=resolution,
                 start_line=call.start_line, end_line=call.end_line, column=call.column))
-    session.add(CallSnapshot(repository_id=repository_id, commit_sha=commit_sha))
 
 
 def file_calls(session, repository_id, file_id, resolution, limit, offset):

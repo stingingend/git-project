@@ -26,7 +26,7 @@ The existing synchronous `/ingest` and `/parse` endpoints remain available for m
 
 Each job has a dedicated worker thread and uses its own database sessions. HTTP requests remain available during ingestion/parsing. The worker uses the same safe Git ingestion, resource limits, parser, and transactional replacement as earlier phases. Source is never executed.
 
-The ingestion and parsing stages have separate transactions. Failed ingestion preserves the previous snapshot. Successful ingestion replaces source and clears the old parsed index; if parsing then fails, the newly ingested snapshot remains available but unparsed. This phase does not stage and publish an entire job atomically.
+The ingestion and parsing stages have separate transactions. Failed ingestion preserves the previous snapshot. Since phase 13, successful ingestion updates changed source and retains unchanged per-file indexes, but invalidates repository-wide parse, call, and relationship markers. If parsing then fails, the new source remains available and the repository is not marked fully parsed. This does not stage and publish an entire job atomically. See [incremental indexing](incremental.md) for reuse and per-job change summaries.
 
 A graceful API shutdown waits for the current operation to finish. Compose allows 120 seconds before forcing a stop. On startup, any remaining queued/running job is marked interrupted with a finish timestamp and a retry message. Recovery does not silently resume partial work or initiate another network clone; start indexing again explicitly. If a database outage prevents recording a failure, a job may retain its last saved status until startup recovery.
 

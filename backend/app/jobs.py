@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import select, update
 
 from .ingestion import IngestionError, ingest_repository
-from .models import IndexJob, Repository
+from .models import IndexJob, Repository, IndexChanges, JobChanges
 from .parsing import ParsingError, parse_repository
 
 ACTIVE_STATUSES = ("queued", "running")
@@ -82,6 +82,8 @@ class IndexWorker:
                 job = session.get(IndexJob, job_id)
                 repository = session.get(Repository, job.repository_id)
                 snapshot = ingest_repository(session, repository)
+                changes = session.get(IndexChanges, repository.id)
+                session.add(JobChanges(job_id=job_id, **{field: getattr(changes, field) for field in CHANGE_FIELDS}))
                 job.stage, job.commit_sha = "parsing", snapshot.commit_sha
                 session.commit()
             with self.sessions() as session:
@@ -90,6 +92,9 @@ class IndexWorker:
                 parsed = parse_repository(session, repository)
                 job.status, job.stage, job.finished_at = "succeeded", "complete", now()
                 job.commit_sha = parsed.commit_sha
+                changes = session.get(IndexChanges, repository.id)
+                saved = session.get(JobChanges, job_id)
+                saved.parsed_files, saved.reused_files = changes.parsed_files, changes.reused_files
                 session.commit()
         except Exception as exc:
             expected = isinstance(exc, (IngestionError, ParsingError))
@@ -105,3 +110,15 @@ class IndexWorker:
     def close(self):
         # Finish the bounded in-flight operation during a graceful shutdown.
         self.executor.shutdown(wait=True)
+
+
+CHANGE_FIELDS = ("added", "changed", "removed", "unchanged", "parsed_files", "reused_files")
+
+
+def read_jobs(session, jobs):
+    # Batch history summaries rather than loading one row per job.
+    summaries = {row.job_id: row for row in session.scalars(select(JobChanges).where(
+        JobChanges.job_id.in_([job.id for job in jobs])))}
+    return [dict(id=job.id, repository_id=job.repository_id, status=job.status, stage=job.stage,
+                 created_at=job.created_at, started_at=job.started_at, finished_at=job.finished_at,
+                 error=job.error, commit_sha=job.commit_sha, changes=summaries.get(job.id)) for job in jobs]
