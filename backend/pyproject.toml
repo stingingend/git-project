@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codeatlas-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Structural repository intelligence, starting with Python."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn>=0.34,<1",
+    "sqlalchemy>=2.0,<3",
 ]
 
 [project.optional-dependencies]
