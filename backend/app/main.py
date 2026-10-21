@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .database import Base, create_database
+from .migrations import upgrade_database
 from .ingestion import IngestionError, ingest_repository
 from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
@@ -50,7 +51,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        Base.metadata.create_all(engine)
+        upgrade_database(engine)
         worker = IndexWorker(sessions, application.state.ingestion_lock)
         application.state.index_worker = worker
         try:
@@ -60,7 +61,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.13.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.14.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 

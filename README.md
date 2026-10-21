@@ -51,7 +51,7 @@ The API creates `codeatlas-metadata.db` in the directory where you start it. Thi
 $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 ```
 
-PostgreSQL is optional; see [the deployment guide](docs/deployment.md). Startup creates missing tables; schema migrations and data transfer between databases are future work.
+PostgreSQL is optional; see [the deployment guide](docs/deployment.md). Startup runs versioned Alembic migrations; see [migration and backup notes](docs/migrations.md). Data transfer between databases remains a separate operation.
 
 Startup creates missing tables alongside existing data. After pulling updates, install dependencies and restart the servers. Re-index previously parsed repositories once to populate the versioned per-file cache; subsequent runs reuse unchanged file indexes.
 

@@ -378,7 +378,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.13</span>
+            Local development <span className="version">v0.14</span>
           </span>
         </header>
         <div className="content">
