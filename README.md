@@ -4,9 +4,9 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: Python symbol extraction
+## Current milestone: repository index inspection
 
-The API can register a GitHub repository, ingest its tracked Python source, and parse the saved snapshot with Tree-sitter. It stores functions, classes, methods, and import statements with signatures, qualified names, and source line ranges. The frontend and relationship graph come later.
+The API can register a GitHub repository, ingest its tracked Python source, parse it with Tree-sitter, and inspect the stored index. An overview combines repository metadata with ingestion and symbol statistics. File and symbol inspection return saved source and commit-pinned GitHub links. The frontend and relationship graph come later.
 
 ### Run locally
 
@@ -28,7 +28,7 @@ $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 
 PostgreSQL setup and schema migrations will come in later milestones. For now, startup creates missing tables; it does not migrate existing tables when their columns change.
 
-Startup creates the new tables alongside existing data. This milestone adds `symbols`, `file_parses`, and `parse_snapshots` without altering the existing tables. After pulling updates, reinstall the backend dependencies and restart the API.
+Startup creates missing tables alongside existing data. This milestone adds read endpoints without changing the database schema. After pulling updates, reinstall the backend dependencies and restart the API.
 
 Expected response from `GET /health`:
 
@@ -122,6 +122,46 @@ Qualified names use `path.py::Class.method` or `path.py::function`. Start and en
 
 Tree-sitter is pinned to 0.25.2 with the Python grammar at 0.25.0. Earlier local validation found a native traversal crash with the 0.26.0 Windows wheel. Check real repositories before changing these pins.
 
+### Inspect the index
+
+In the API documentation, follow the three numbered POST operations: **register**, **download source**, and **extract symbols**. Registration takes JSON in the **Request body** box; the later operations take the numeric `repository_id` returned by registration.
+
+Once those stages finish, use these read endpoints:
+
+| Endpoint | Result |
+| --- | --- |
+| `GET /repositories/{id}/overview` | `repository` metadata, ingestion `snapshot` statistics, and `parsing` statistics |
+| `GET /repositories/{id}/files/{file_id}` | File metadata, full saved source, commit link, parse flags, and a page of symbols |
+| `GET /repositories/{id}/symbols/{symbol_id}` | Symbol metadata, its file, source snippet, syntax-error flag, and a GitHub line link |
+
+Get `file_id` values from `/repositories/{id}/files` and `symbol_id` values from `/repositories/{id}/symbols` or a file's symbol page. IDs belong to the current saved index; refresh the lists after re-ingestion or re-parsing. A detail ID from another repository returns `404`.
+
+An overview works before ingestion or parsing. Its `snapshot` is `null` until source is saved; `parsing` is `null` until extraction finishes. Zero counts in a completed stage mean zero results, while `null` means the stage has not completed. Syntax-error counts remain visible even after the status becomes `parsed`.
+
+File detail returns a `symbols` object with `items`, `total`, `limit`, and `offset`. Its page size defaults to 100, with a maximum of 500. `total` is `null` for an unparsed file and zero for a parsed file with no symbols. Example:
+
+```powershell
+$repositoryId = 1 # replace with the ID returned by registration
+$base = "http://127.0.0.1:8000/repositories/$repositoryId"
+$overview = Invoke-RestMethod -Uri "$base/overview"
+$files = Invoke-RestMethod -Uri "$base/files"
+$file = Invoke-RestMethod -Uri "$base/files/$($files[0].id)?limit=20&offset=0"
+$file.source
+$file.symbols.items
+```
+
+If the file has symbols, inspect one with:
+
+```powershell
+$symbol = Invoke-RestMethod -Uri "$base/symbols/$($file.symbols.items[0].id)"
+$symbol.source
+$symbol.github_url
+```
+
+Use the port your server is running on; substitute `8001` if you used the alternate startup command. Choose a file with symbols for the last example.
+
+These GET endpoints only read stored data. They do not clone, parse, execute source, or write records. Links use `/blob/{commit_sha}/...`, including line fragments for symbols. Snippets preserve indentation and internal line breaks, omitting the LF after the last selected line. The SQLite inspection endpoints use a read transaction to keep source and symbol queries on one snapshot during concurrent writes.
+
 ### Run the tests
 
 From the repository root:
@@ -139,6 +179,7 @@ From the repository root:
 5. Tree-sitter parses the saved source into a syntax tree. An iterative traversal extracts definitions and their enclosing scopes.
 6. A second transaction saves symbols, per-file parse flags, summary counts, and the `parsed` status.
 7. Tests use real local Git fixtures and isolated databases. Parser fixtures exercise scopes, signatures, recovery, limits, and snapshot invalidation.
+8. The index query module combines existing stored records for overview, file inspection, and symbol source inspection.
 
 The `/health` endpoint checks that the API process responds. It does not check the database or GitHub.
 
@@ -147,5 +188,7 @@ See [the metadata walkthrough](docs/metadata-storage.md) for an explanation of t
 See [the ingestion walkthrough](docs/ingestion.md) for Git objects, source discovery, and snapshot replacement.
 
 See [the parsing walkthrough](docs/parsing.md) for syntax trees, scope tracking, symbol records, and recovery behavior.
+
+See [the index inspection walkthrough](docs/index-inspection.md) for the new read API and how a future frontend can use it.
 
 See [the roadmap](docs/roadmap.md) for the next steps.

@@ -10,14 +10,25 @@ from sqlalchemy.orm import Session
 
 from .database import Base, create_database
 from .ingestion import IngestionError, ingest_repository
+from .index import file_detail, repository_overview, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
 from .parsing import ParsingError, parse_repository
-from .schemas import (FileParseRead, FileRead, ParseSnapshotRead, RepositoryCreate,
-                      RepositoryRead, SnapshotRead, SymbolRead)
+from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
+                      RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
+                      SnapshotRead, SymbolDetailRead, SymbolRead)
 
 
 def get_session(request: Request):
     with request.app.state.sessions() as session:
+        yield session
+
+
+def get_index_session(request: Request):
+    with request.app.state.sessions() as session:
+        if session.get_bind().dialect.name == "sqlite":
+            # SQLite's legacy driver mode does not begin a transaction for SELECT.
+            # Keep source, parse metadata, and symbol pages on the same read snapshot.
+            session.connection().exec_driver_sql("BEGIN")
         yield session
 
 
@@ -34,7 +45,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.4.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.5.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -42,7 +53,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @application.post("/repositories", response_model=RepositoryRead, status_code=201)
+    @application.post("/repositories", response_model=RepositoryRead, status_code=201,
+                      summary="Register a GitHub repository URL (step 1)")
     def register_repository(body: RepositoryCreate, session: Session = Depends(get_session)):
         owner, name = body.github_url.removeprefix("https://github.com/").split("/")
         repository = Repository(github_url=body.github_url, owner=owner, name=name)
@@ -65,7 +77,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(404, "Repository not found.")
         return repository
 
-    @application.post("/repositories/{repository_id}/ingest", response_model=SnapshotRead)
+    @application.post("/repositories/{repository_id}/ingest", response_model=SnapshotRead,
+                      summary="Download Python source for a registered repository (step 2)")
     def ingest(repository_id: int, session: Session = Depends(get_session)):
         repository = session.get(Repository, repository_id)
         if repository is None:
@@ -96,7 +109,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return session.scalars(select(SourceFile).where(
             SourceFile.repository_id == repository_id).order_by(SourceFile.path)).all()
 
-    @application.post("/repositories/{repository_id}/parse", response_model=ParseSnapshotRead)
+    @application.post("/repositories/{repository_id}/parse", response_model=ParseSnapshotRead,
+                      summary="Extract symbols from saved source (step 3)")
     def parse(repository_id: int, session: Session = Depends(get_session)):
         repository = session.get(Repository, repository_id)
         if repository is None:
@@ -144,6 +158,32 @@ def create_app(database_url: str | None = None) -> FastAPI:
             query = query.where(Symbol.symbol_type == kind)
         return session.scalars(query.order_by(SourceFile.path, Symbol.start_line, Symbol.id)
                                .limit(limit).offset(offset)).all()
+
+    @application.get("/repositories/{repository_id}/overview", response_model=RepositoryOverviewRead,
+                     summary="Inspect repository metadata and indexing statistics")
+    def get_overview(repository_id: int, session: Session = Depends(get_index_session)):
+        result = repository_overview(session, repository_id)
+        if result is None:
+            raise HTTPException(404, "Repository not found.")
+        return result
+
+    @application.get("/repositories/{repository_id}/files/{file_id}", response_model=FileDetailRead,
+                     summary="Inspect saved source and a page of its symbols")
+    def get_file_detail(repository_id: int, file_id: int,
+                        limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0),
+                        session: Session = Depends(get_index_session)):
+        result = file_detail(session, repository_id, file_id, limit, offset)
+        if result is None:
+            raise HTTPException(404, "File not found in this repository.")
+        return result
+
+    @application.get("/repositories/{repository_id}/symbols/{symbol_id}", response_model=SymbolDetailRead,
+                     summary="Inspect a symbol's source snippet and GitHub line link")
+    def get_symbol_detail(repository_id: int, symbol_id: int, session: Session = Depends(get_index_session)):
+        result = symbol_detail(session, repository_id, symbol_id)
+        if result is None:
+            raise HTTPException(404, "Symbol not found in this repository.")
+        return result
 
     return application
 

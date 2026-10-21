@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class RepositoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    github_url: str = Field(max_length=500)
+    github_url: str = Field(max_length=500, examples=["https://github.com/pallets/itsdangerous"])
 
     @field_validator("github_url")
     @classmethod
@@ -110,3 +110,34 @@ class FileParseRead(BaseModel):
     file_id: int
     has_parse_errors: bool
     symbol_count: int
+
+
+class RepositoryOverviewRead(BaseModel):
+    repository: RepositoryRead
+    snapshot: SnapshotRead | None
+    parsing: ParseSnapshotRead | None
+
+
+class SymbolPageRead(BaseModel):
+    items: list[SymbolRead]
+    total: int | None
+    limit: int
+    offset: int
+
+
+class FileDetailRead(BaseModel):
+    file: FileRead
+    source: str
+    commit_sha: str
+    github_url: str
+    parsing: FileParseRead | None
+    symbols: SymbolPageRead
+
+
+class SymbolDetailRead(BaseModel):
+    symbol: SymbolRead
+    file: FileRead
+    source: str
+    commit_sha: str
+    has_parse_errors: bool
+    github_url: str

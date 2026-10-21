@@ -1,30 +1,8 @@
-from datetime import datetime, timezone
-
 from fastapi.testclient import TestClient
 import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.main import create_app
-from app.models import Repository, RepositorySnapshot, SourceFile
-
-
-@pytest.fixture
-def ingested_repository(client):
-    response = client.post("/repositories", json={"github_url": "https://github.com/example/demo"})
-    repository_id = response.json()["id"]
-    with client.app.state.sessions() as session:
-        session.get(Repository, repository_id).status = "ingested"
-        session.add(RepositorySnapshot(repository_id=repository_id, commit_sha="a" * 40,
-            default_branch="main", ingested_at=datetime.now(timezone.utc), file_count=2,
-            skipped_files=0, line_count=5))
-        session.add_all([
-            SourceFile(repository_id=repository_id, path="app.py", content_hash="b" * 64,
-                line_count=4, source="import os\nclass Service:\n    def run(self):\n        return True\n"),
-            SourceFile(repository_id=repository_id, path="broken.py", content_hash="c" * 64,
-                line_count=1, source="def broken(:\n"),
-        ])
-        session.commit()
-    return repository_id
 
 
 def test_parse_saved_source_and_inspect_symbols(client, ingested_repository):
