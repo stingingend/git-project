@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 import os
 import threading
 from typing import Literal
@@ -17,6 +18,9 @@ from .relationships import dependency_graph, file_relationships
 from .schemas import DependencyGraphRead, RelationshipPageRead
 from .schemas import CallPageRead
 from .calls import file_calls
+from .jobs import IndexingBusy, IndexWorker
+from .models import IndexJob
+from .schemas import IndexJobRead
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
                       SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
@@ -47,12 +51,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         Base.metadata.create_all(engine)
+        worker = IndexWorker(sessions, application.state.ingestion_lock)
+        application.state.index_worker = worker
         try:
+            worker.recover()
             yield
         finally:
+            await asyncio.to_thread(worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.11.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.12.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -245,6 +253,29 @@ def create_app(database_url: str | None = None) -> FastAPI:
         if result is None:
             raise HTTPException(404, "File not found in this repository.")
         return result
+
+    @application.post("/repositories/{repository_id}/jobs", response_model=IndexJobRead, status_code=202,
+                      summary="Start a durable background ingestion and parse job")
+    def start_job(repository_id: int, session: Session = Depends(get_session)):
+        if session.get(Repository, repository_id) is None:
+            raise HTTPException(404, "Repository not found.")
+        try:
+            return application.state.index_worker.submit(repository_id)
+        except IndexingBusy as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except (RuntimeError, SQLAlchemyError) as exc:
+            raise HTTPException(503, "Could not start the indexing worker. Try again.") from exc
+
+    @application.get("/jobs", response_model=list[IndexJobRead], summary="Inspect recent indexing jobs")
+    def recent_jobs(limit: int = Query(10, ge=1, le=50), session: Session = Depends(get_session)):
+        return session.scalars(select(IndexJob).order_by(IndexJob.created_at.desc(), IndexJob.id.desc()).limit(limit)).all()
+
+    @application.get("/jobs/{job_id}", response_model=IndexJobRead)
+    def get_job(job_id: str, session: Session = Depends(get_session)):
+        job = session.get(IndexJob, job_id)
+        if job is None:
+            raise HTTPException(404, "Indexing job not found.")
+        return job
 
     return application
 

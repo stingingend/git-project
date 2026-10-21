@@ -17,6 +17,7 @@ services:
 
   api:
     build: ./backend
+    stop_grace_period: 120s
     environment:
       DATABASE_URL: postgresql+psycopg://codeatlas:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}@db:5432/codeatlas
     depends_on:

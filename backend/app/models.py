@@ -123,3 +123,17 @@ class CallSite(Base):
     start_line: Mapped[int]
     end_line: Mapped[int]
     column: Mapped[int]
+
+
+class IndexJob(Base):
+    __tablename__ = "index_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    stage: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(Text)
+    commit_sha: Mapped[str | None] = mapped_column(String(40))

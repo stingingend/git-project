@@ -237,3 +237,22 @@ class CallPageRead(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class IndexJobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    repository_id: int
+    status: str
+    stage: str
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    error: str | None
+    commit_sha: str | None
+
+    @field_validator("created_at", "started_at", "finished_at")
+    @classmethod
+    def restore_sqlite_timezone(cls, value: datetime | None) -> datetime | None:
+        return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value

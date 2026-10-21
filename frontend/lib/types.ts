@@ -56,7 +56,19 @@ export type FileDetail = {
     offset: number;
   };
 };
-export type Stage = "registering" | "ingesting" | "parsing";
+export type Stage = "registering" | "queued" | "ingesting" | "parsing";
+
+export type IndexJob = {
+  id: string;
+  repository_id: number;
+  status: "queued" | "running" | "succeeded" | "failed" | "interrupted";
+  stage: "queued" | "ingesting" | "parsing" | "complete";
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  commit_sha: string | null;
+};
 
 export type SearchHit = {
   symbol: SymbolRecord;

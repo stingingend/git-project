@@ -31,7 +31,7 @@ docker compose --env-file .env.docker down
 
 Docker starts a separate PostgreSQL database. It does not copy or replace existing SQLite data. Register and index repositories in the Docker interface to populate that database. Schema startup creates missing tables; automatic schema migrations and SQLite data transfer are not implemented yet.
 
-Run only **one API worker and one API instance** against a database. The current ingestion/parse lock is local to that process. Background workers and distributed locking are later work. This setup is for local use; authentication and public hosting are not part of this phase.
+Run only **one API worker and one API instance** against a database. Background indexing uses a local worker thread and shares the process-local ingestion/parse lock. Compose allows 120 seconds for graceful API shutdown. See [background jobs](jobs.md) for progress, interrupted-job recovery, and limitations. Distributed locking is later work. This setup is for local use; authentication and public hosting are not part of this phase.
 
 ## PostgreSQL without Docker
 

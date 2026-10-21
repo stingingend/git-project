@@ -30,6 +30,7 @@ def main():
             if exc.code != 409:
                 raise
     repos = request(args.web + "/api/repositories")
+    assert isinstance(request(args.web + "/api/jobs?limit=1"), list)
     assert any(repo["github_url"] == url for repo in repos), "Registered repository did not persist"
     print("Stack smoke check passed: web, proxy, API, PostgreSQL persistence.")
 

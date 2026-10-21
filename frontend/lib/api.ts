@@ -10,6 +10,7 @@ import type {
   RelationshipPage,
   DependencyGraph,
   CallPage,
+  IndexJob,
 } from "./types";
 
 export class ApiError extends Error {
@@ -57,6 +58,9 @@ export function createApi(fetcher: typeof fetch = fetch) {
   }
   return {
     repositories: () => request<Repository[]>("/repositories"),
+    jobs: () => request<IndexJob[]>("/jobs?limit=10"),
+    job: (id: string) => request<IndexJob>(`/jobs/${encodeURIComponent(id)}`),
+    startJob: (repositoryId: number) => request<IndexJob>(`/repositories/${repositoryId}/jobs`, { method: "POST" }),
     register: (github_url: string) =>
       request<Repository>("/repositories", {
         method: "POST",
@@ -138,6 +142,15 @@ export async function indexRepository(
   progress: (stage: Stage, repository?: Repository) => void,
 ): Promise<Repository> {
   progress("registering");
+  const repository = await connectRepository(url, api);
+  progress("ingesting", repository);
+  await api.ingest(repository.id);
+  progress("parsing", repository);
+  await api.parse(repository.id);
+  return repository;
+}
+
+async function connectRepository(url: string, api: Api): Promise<Repository> {
   let repository: Repository;
   try {
     repository = await api.register(url.trim());
@@ -154,9 +167,15 @@ export async function indexRepository(
     if (!existing) throw error;
     repository = existing;
   }
-  progress("ingesting", repository);
-  await api.ingest(repository.id);
-  progress("parsing", repository);
-  await api.parse(repository.id);
   return repository;
+}
+
+export async function startIndexJob(url: string, api: Api) {
+  const repository = await connectRepository(url, api);
+  const job = await api.startJob(repository.id);
+  return { repository, job };
+}
+
+export function activeJob(job: IndexJob) {
+  return job.status === "queued" || job.status === "running";
 }

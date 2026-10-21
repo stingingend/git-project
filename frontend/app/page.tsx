@@ -23,7 +23,7 @@ import {
   Terminal,
   X,
 } from "lucide-react";
-import { createApi, indexRepository, loadSymbolSource } from "../lib/api";
+import { ApiError, activeJob, createApi, startIndexJob, loadSymbolSource } from "../lib/api";
 import type {
   FileDetail,
   Overview,
@@ -32,6 +32,7 @@ import type {
   Stage,
   SearchHit,
   SourceSelection,
+  IndexJob,
 } from "../lib/types";
 import { SourceViewer } from "../components/source-viewer";
 import { SymbolSearch } from "../components/symbol-search";
@@ -39,9 +40,10 @@ import { Relationships } from "../components/relationships";
 import { DependencyGraph } from "../components/dependency-graph";
 
 const api = createApi();
-const stages: Stage[] = ["registering", "ingesting", "parsing"];
+const stages: Stage[] = ["registering", "queued", "ingesting", "parsing"];
 const stageLabels = [
   "Connect repository",
+  "Schedule job",
   "Collect Python source",
   "Extract symbols",
 ];
@@ -66,6 +68,8 @@ export default function Home() {
   const [stage, setStage] = useState<Stage | "complete" | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [job, setJob] = useState<IndexJob | null>(null);
+  const [jobHistory, setJobHistory] = useState<IndexJob[]>([]);
   const input = useRef<HTMLInputElement>(null);
   const fileRequest = useRef(0);
   const explorer = useRef<HTMLElement>(null);
@@ -81,12 +85,15 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
-    api
-      .repositories()
-      .then((data) => {
+    Promise.all([api.repositories(), api.jobs()])
+      .then(([data, history]) => {
         if (!active) return;
         setRepositories(data);
-        setSelectedId(data.at(-1)?.id ?? null);
+        setJobHistory(history);
+        const latest = history[0];
+        setJob(latest ?? null);
+        setBusy(latest ? activeJob(latest) : false);
+        setSelectedId(latest?.repository_id ?? data.at(-1)?.id ?? null);
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -98,6 +105,46 @@ export default function Home() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!job) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let disconnected = false;
+    const id = job.id;
+    async function poll() {
+      try {
+        const current = await api.job(id);
+        if (!active) return;
+        if (disconnected) { setError(""); disconnected = false; }
+        setJob(current);
+        setJobHistory(history => [current, ...history.filter(item => item.id !== current.id)]
+          .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 10));
+        const running = activeJob(current);
+        if (running) setBusy(true);
+        setStage(current.status === "succeeded" ? "complete" : running
+          ? current.stage === "complete" ? "parsing" : current.stage : null);
+        if (!running) {
+          if (current.error) setError(current.error);
+          await refresh(current.repository_id, () => active);
+          if (active) setBusy(false);
+          return;
+        }
+      } catch (reason) {
+        if (!active) return;
+        if (reason instanceof ApiError && reason.status === 404) {
+          setError("This indexing job no longer exists. Refresh the workspace.");
+          setBusy(false); setStage(null);
+          return;
+        }
+        disconnected = true;
+        setError(`Cannot check indexing status. The job may still be running. Reconnecting… ${(reason as Error).message}`);
+      }
+      if (active) timer = setTimeout(poll, disconnected ? 2000 : 1000);
+    }
+    void poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, [job?.id]);
 
   useEffect(() => {
     let active = true;
@@ -130,8 +177,9 @@ export default function Home() {
     };
   }, [selectedId, revision]);
 
-  async function refresh(preferredId?: number) {
+  async function refresh(preferredId?: number, stillCurrent = () => true) {
     const data = await api.repositories();
+    if (!stillCurrent()) return;
     setRepositories(data);
     setSelectedId(
       (current) =>
@@ -159,22 +207,19 @@ export default function Home() {
     setBusy(true);
     setError("");
     setStage("registering");
+    setJob(null);
     setSelection(null);
     fileRequest.current++;
     setFileLoading(false);
     let targetId: number | undefined;
     let failure = "";
+    let accepted = false;
     try {
-      const repo = await indexRepository(
-        repositoryUrl,
-        api,
-        (nextStage, target) => {
-          setStage(nextStage);
-          if (target) targetId = target.id;
-        },
-      );
-      targetId = repo.id;
-      setStage("complete");
+      const started = await startIndexJob(repositoryUrl, api);
+      targetId = started.repository.id;
+      setJob(started.job);
+      accepted = true;
+      setStage(started.job.stage === "complete" ? "complete" : started.job.stage);
       setUrl("");
     } catch (e) {
       failure = (e as Error).message;
@@ -186,7 +231,7 @@ export default function Home() {
       if (!failure) failure = (e as Error).message;
     }
     if (failure) setError(failure);
-    setBusy(false);
+    if (failure && !accepted) setBusy(false);
   }
 
   async function openFile(
@@ -248,7 +293,8 @@ export default function Home() {
   const filtered = files.filter((file) =>
     file.path.toLowerCase().includes(filter.toLowerCase()),
   );
-  const step = stage === "complete" ? 3 : stage ? stages.indexOf(stage) : -1;
+  const step = stage === "complete" ? stages.length : stage ? stages.indexOf(stage) : -1;
+  const jobRepository = repositories.find(repo => repo.id === job?.repository_id);
 
   return (
     <div className="workspace">
@@ -331,7 +377,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.11</span>
+            Local development <span className="version">v0.12</span>
           </span>
         </header>
         <div className="content">
@@ -423,16 +469,17 @@ export default function Home() {
                     ? "Repository indexed"
                     : stage === "registering"
                       ? "Connecting your repository"
-                      : stage === "ingesting"
+                      : stage === "queued" ? "Indexing job scheduled" : stage === "ingesting"
                         ? "Collecting Python source"
                         : "Extracting symbols"}
                 </strong>
                 <span>
                   {stage === "complete"
                     ? "Ready to explore"
-                    : "Keep this tab open while indexing."}
+                    : "Runs on the API. You can reload this page."}
                 </span>
               </div>
+              <p className="job-reference">{job ? `Job ${job.id.slice(0, 8)} · ${jobRepository ? `${jobRepository.owner}/${jobRepository.name}` : `Repository ${job.repository_id}`} · Progress saved` : "Creating a background indexing job…"}</p>
               <ol className="job-steps">
                 {stageLabels.map((label, index) => (
                   <li
@@ -445,12 +492,22 @@ export default function Home() {
                       {index < step ? <Check size={11} /> : index + 1}
                     </span>
                     {label}
-                    {index < 2 && <div />}
+                    {index < stages.length - 1 && <div />}
                   </li>
                 ))}
               </ol>
             </section>
           )}
+          {jobHistory.length > 0 && <details className="job-history">
+            <summary>Recent indexing runs <span>{jobHistory.length}</span></summary>
+            {jobHistory.map(item => <article key={item.id}>
+              <div><strong>{repositories.find(repo => repo.id === item.repository_id)?.name ?? `Repository ${item.repository_id}`}</strong>
+                <span className={`job-state ${item.status}`}>{item.status}</span></div>
+              <small>{item.id.slice(0, 8)} · {item.stage} · {new Date(item.created_at).toLocaleString()}{item.commit_sha ? ` · ${item.commit_sha.slice(0, 7)}` : ""}</small>
+              {item.error && <p>{item.error}</p>}
+              <button className="secondary" disabled={busy} onClick={() => { setJob(item); setSelectedId(item.repository_id); }}>View repository</button>
+            </article>)}
+          </details>}
           {error && (
             <div className="error-banner" role="alert">
               <span>{error}</span>

@@ -4,9 +4,9 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: approximate call analysis
+## Current milestone: background indexing jobs
 
-Select a Python file and open **Calls** to inspect callable expressions and possible definition matches within that file. Filter uncertain results and jump from a suggested target to highlighted source. Suggestions are explicitly approximate. The dependency graph, symbol search, and source explorer remain available. See [the call-analysis walkthrough](docs/calls.md) for scope and limits, or [the deployment guide](docs/deployment.md) for Docker and PostgreSQL setup.
+Indexing now runs in a background worker with saved progress, job history, errors, and interrupted-job recovery. Reload the page to reconnect to the most recent job; closing the tab does not cancel it. Symbol search, source navigation, approximate call analysis, and the animated dependency graph remain available. See [background jobs](docs/jobs.md) for lifecycle and limits, or [the deployment guide](docs/deployment.md) for Docker and PostgreSQL setup.
 
 With Docker Desktop running, start from the repository root:
 
@@ -17,7 +17,7 @@ docker compose --env-file .env.docker up --build --wait
 
 Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
-![CodeAtlas call analysis](docs/calls-preview.png)
+![CodeAtlas background indexing](docs/jobs-preview.jpg)
 
 ### Run locally
 

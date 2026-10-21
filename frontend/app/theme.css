@@ -283,3 +283,17 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
 .call-target:hover:not(:disabled) { background: #355b8d; }
 .call-target span { color: #b8cfff; font: 9px var(--mono); }
 .call-resolution { font-size: 10px; color: #afc1db; }
+.job-reference { margin: 10px 0 0; color: #52647d; font: 11px var(--mono); }
+.job-history { margin: 0 0 24px; border: 1px solid #dce3ee; border-radius: 12px; background: white; }
+.job-history summary { padding: 15px 20px; cursor: pointer; font-size: 13px; font-weight: 600; color: #304966; }
+.job-history summary > span { margin-left: 6px; color: #52647d; font: 10px var(--mono); }
+.job-history article { padding: 16px 20px; border-top: 1px solid #e1e7f0; }
+.job-history article > div { display: flex; gap: 10px; align-items: center; }
+.job-history article strong { font-size: 13px; }
+.job-history article small { display: block; margin: 8px 0 12px; font: 10px var(--mono); color: #52647d; overflow-wrap: anywhere; }
+.job-history article p { font-size: 12px; line-height: 1.7; color: #983a3e; }
+.job-state { padding: 3px 7px; border-radius: 5px; font-size: 10px; background: #edf2fa; color: #425d85; text-transform: capitalize; }
+.job-state.succeeded { color: #166344; background: #e7f6ed; }
+.job-state.failed { color: #9f2c32; background: #fff0f1; }
+.job-state.interrupted { color: #845910; background: #fff4de; }
+@media (max-width: 600px) { .job-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .job-reference { font-size: 10px; line-height: 1.7; } }

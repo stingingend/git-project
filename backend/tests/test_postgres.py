@@ -120,3 +120,24 @@ def test_postgres_index_reads_keep_one_snapshot(postgres_client):
         assert [s["name"] for s in detail["symbols"]["items"]] == ["from .helper import work", "Service", "run"]
     finally:
         event.remove(engine, "after_cursor_execute", replace_between_queries)
+
+
+def test_postgres_background_job_uses_its_own_sessions(postgres_client, monkeypatch):
+    import time
+    client = postgres_client
+    prefix = seed(client)
+    monkeypatch.setattr("app.jobs.ingest_repository",
+        lambda session, repo: session.get(RepositorySnapshot, repo.id))
+    response = client.post(prefix + "/jobs")
+    assert response.status_code == 202
+    job_id = response.json()["id"]
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        job = client.get(f"/jobs/{job_id}").json()
+        if job["status"] not in ("queued", "running"):
+            break
+        time.sleep(0.01)
+    assert job["status"] == "succeeded", job
+    assert job["commit_sha"] == "a" * 40
+    assert client.get(prefix + "/search", params={"q": "Service.run"}).json()["total"] == 1
+    assert client.get("/jobs").json()[0]["id"] == job_id
