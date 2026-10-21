@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+import threading
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import select
@@ -7,8 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import Base, create_database
-from .models import Repository
-from .schemas import RepositoryCreate, RepositoryRead
+from .ingestion import IngestionError, ingest_repository
+from .models import Repository, RepositorySnapshot, SourceFile
+from .schemas import FileRead, RepositoryCreate, RepositoryRead, SnapshotRead
 
 
 def get_session(request: Request):
@@ -29,8 +31,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.2.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.3.0", lifespan=lifespan)
     application.state.sessions = sessions
+    application.state.ingestion_lock = threading.Lock()
 
     @application.get("/health")
     def health() -> dict[str, str]:
@@ -58,6 +61,37 @@ def create_app(database_url: str | None = None) -> FastAPI:
         if repository is None:
             raise HTTPException(404, "Repository not found.")
         return repository
+
+    @application.post("/repositories/{repository_id}/ingest", response_model=SnapshotRead)
+    def ingest(repository_id: int, session: Session = Depends(get_session)):
+        repository = session.get(Repository, repository_id)
+        if repository is None:
+            raise HTTPException(404, "Repository not found.")
+        if not application.state.ingestion_lock.acquire(blocking=False):
+            raise HTTPException(409, "Another ingestion is running. Try again when it finishes.")
+        try:
+            snapshot = ingest_repository(session, repository)
+            session.commit()
+            return snapshot
+        except IngestionError as exc:
+            session.rollback()
+            raise HTTPException(422, str(exc)) from exc
+        finally:
+            application.state.ingestion_lock.release()
+
+    @application.get("/repositories/{repository_id}/snapshot", response_model=SnapshotRead)
+    def get_snapshot(repository_id: int, session: Session = Depends(get_session)):
+        snapshot = session.get(RepositorySnapshot, repository_id)
+        if snapshot is None:
+            raise HTTPException(404, "No ingested snapshot found.")
+        return snapshot
+
+    @application.get("/repositories/{repository_id}/files", response_model=list[FileRead])
+    def list_files(repository_id: int, session: Session = Depends(get_session)):
+        if session.get(Repository, repository_id) is None:
+            raise HTTPException(404, "Repository not found.")
+        return session.scalars(select(SourceFile).where(
+            SourceFile.repository_id == repository_id).order_by(SourceFile.path)).all()
 
     return application
 

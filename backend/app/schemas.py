@@ -40,3 +40,31 @@ class RepositoryRead(BaseModel):
     def restore_sqlite_timezone(cls, value: datetime) -> datetime:
         # SQLite stores datetimes without an offset; all writes above use UTC.
         return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+class SnapshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    repository_id: int
+    commit_sha: str
+    default_branch: str
+    ingested_at: datetime
+    file_count: int
+    skipped_files: int
+    line_count: int
+
+    @field_validator("ingested_at")
+    @classmethod
+    def restore_sqlite_timezone(cls, value: datetime) -> datetime:
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+class FileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    repository_id: int
+    path: str
+    language: str
+    content_hash: str
+    line_count: int

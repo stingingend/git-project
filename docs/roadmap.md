@@ -6,7 +6,7 @@ Each milestone should work on its own and include a focused check.
 | --- | --- | --- |
 | 1 — complete | API skeleton and health endpoint | HTTP routes, JSON, and API tests |
 | 2 — complete | Persist repository metadata | Tables, sessions, and transactions |
-| 3 | Ingest a public GitHub repository | URL validation, shallow clones, discovery, and limits |
+| 3 — complete | Ingest a public GitHub repository | URL validation, shallow clones, discovery, and limits |
 | 4 | Parse Python symbols with Tree-sitter | Syntax trees, scopes, and source ranges |
 | 5 | Store and query the index | Files, symbols, statistics, and atomic indexing |
 | 6 | Build a minimal repository UI | React state, requests, loading, and errors |
