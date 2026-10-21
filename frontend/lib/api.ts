@@ -9,6 +9,7 @@ import type {
   SymbolDetail,
   RelationshipPage,
   DependencyGraph,
+  CallPage,
 } from "./types";
 
 export class ApiError extends Error {
@@ -85,6 +86,11 @@ export function createApi(fetcher: typeof fetch = fetch) {
       request<SymbolDetail>(`/repositories/${id}/symbols/${symbolId}`),
     graph: (id: number, fileId: number) =>
       request<DependencyGraph>(`/repositories/${id}/files/${fileId}/graph`),
+    calls: (id: number, fileId: number, resolution = "", offset = 0) => {
+      const params = new URLSearchParams({ limit: "30", offset: String(offset) });
+      if (resolution) params.set("resolution", resolution);
+      return request<CallPage>(`/repositories/${id}/files/${fileId}/calls?${params}`);
+    },
     relationships: (id: number, fileId: number, kind: string, direction: string, offset = 0) => {
       const params = new URLSearchParams({ direction, limit: "30", offset: String(offset) });
       if (kind) params.set("kind", kind);

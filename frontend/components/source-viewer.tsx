@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { FileDetail, SourceSelection, SymbolRecord } from "../lib/types";
+import { CallBrowser } from "./call-browser";
 import {
   SOURCE_PAGE_SIZE as PAGE_SIZE,
   isSelectedLine,
@@ -16,6 +17,7 @@ import {
 } from "../lib/source-range";
 
 export function SourceViewer({
+  repositoryId,
   detail,
   busy,
   loadSymbols,
@@ -23,6 +25,7 @@ export function SourceViewer({
   selectSymbol,
   clearSelection,
 }: {
+  repositoryId: number;
   detail: FileDetail;
   busy: boolean;
   loadSymbols: (offset: number) => void;
@@ -30,7 +33,7 @@ export function SourceViewer({
   selectSymbol: (symbol: SymbolRecord) => void;
   clearSelection: () => void;
 }) {
-  const [tab, setTab] = useState<"source" | "symbols">("source");
+  const [tab, setTab] = useState<"source" | "symbols" | "calls">("source");
   const [page, setPage] = useState(0);
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -113,6 +116,7 @@ export function SourceViewer({
         >
           Symbols <span>{detail.parsing ? symbols.total : "—"}</span>
         </button>
+        <button role="tab" aria-selected={tab === "calls"} onClick={() => setTab("calls")}>Calls</button>
         <span className="mono">{detail.commit_sha.slice(0, 7)}</span>
       </div>
       {!detail.parsing && (
@@ -125,7 +129,8 @@ export function SourceViewer({
           Syntax errors found. Recovered symbols may be incomplete.
         </div>
       )}
-      {tab === "source" ? (
+      {tab === "calls" ? <CallBrowser repositoryId={repositoryId} fileId={detail.file.id}
+        commitSha={detail.commit_sha} githubUrl={detail.github_url} busy={busy} selectSymbol={selectSymbol} /> : tab === "source" ? (
         <>
           <div
             ref={panel}

@@ -331,7 +331,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.10</span>
+            Local development <span className="version">v0.11</span>
           </span>
         </header>
         <div className="content">
@@ -663,6 +663,7 @@ export default function Home() {
                   {detail ? (
                     <>
                       <SourceViewer
+                        repositoryId={selectedId!}
                         key={`${detail.file.id}:${detail.commit_sha}`}
                         detail={detail}
                         busy={fileLoading || busy}

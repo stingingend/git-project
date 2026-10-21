@@ -266,3 +266,20 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
   .graph-edge-flow { animation: none; opacity: 0; }
 }
 @media (max-width: 600px) { .graph-heading { padding: 18px; flex-wrap: wrap; } .graph-heading h3 { font-size: 17px; } .graph-legend { padding: 0 18px 15px; gap: 10px; } .graph-summary { padding: 14px 18px 0; font-size: 10px; } .graph-footnote, .graph-message { padding: 0 18px; } }
+.call-intro { padding: 14px 16px; background: #17253d; border-bottom: 1px solid #33435d; flex-shrink: 0; }
+.call-intro > strong { font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.call-intro > strong > span { color: #f4d89b; background: #473d2b; border: 1px solid #756444; border-radius: 4px; font-size: 10px; padding: 2px 6px; font-weight: 400; }
+.call-intro p { color: #b8c9e2; font-size: 11px; line-height: 1.6; margin: 8px 0 12px; }
+.call-intro label { font-size: 11px; color: #b8c9e2; display: flex; gap: 8px; align-items: center; }
+.call-intro select { background: #223654; border: 1px solid #506788; color: #e1eafe; border-radius: 5px; padding: 5px 8px; font-size: 11px; }
+.call-intro > small { color: #b8c9e2; display: block; font-size: 10px; margin-top: 10px; }
+.call-list { min-height: 0; overflow: auto; flex: 1; }
+.call-row { padding: 14px 16px; border-bottom: 1px solid #30415b; }
+.call-row > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.call-row code { font: 12px var(--mono); color: #e0eaff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-row a { font: 10px var(--mono); color: #b9d0ff; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.call-row > small { color: #aec1dd; font-size: 10px; display: block; margin: 7px 0 10px; }
+.call-target { background: #274570; border: 1px solid #567db2; color: #e4eeff; padding: 6px 8px; border-radius: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 11px; text-align: left; }
+.call-target:hover:not(:disabled) { background: #355b8d; }
+.call-target span { color: #b8cfff; font: 9px var(--mono); }
+.call-resolution { font-size: 10px; color: #afc1db; }

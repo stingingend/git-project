@@ -206,3 +206,34 @@ class DependencyGraphRead(BaseModel):
     self_imports: int
     nodes: list[GraphNodeRead]
     edges: list[GraphEdgeRead]
+
+
+class CallRead(BaseModel):
+    id: int
+    expression: str
+    call_type: str
+    start_line: int
+    end_line: int
+    column: int
+    resolution: str
+    caller: SymbolRead | None
+    target: SymbolRead | None
+
+
+class CallSummaryRead(BaseModel):
+    total: int
+    candidates: int
+    ambiguous: int
+    unresolved: int
+
+
+class CallPageRead(BaseModel):
+    file_id: int
+    ready: bool
+    commit_sha: str | None
+    has_parse_errors: bool
+    summary: CallSummaryRead
+    items: list[CallRead]
+    total: int
+    limit: int
+    offset: int

@@ -24,14 +24,27 @@ class ExtractedSymbol:
 
 
 @dataclass
+class ExtractedCall:
+    expression: str
+    direct_name: str | None
+    caller_index: int | None
+    call_type: str
+    start_line: int
+    end_line: int
+    column: int
+
+
+@dataclass
 class ParsedFile:
     symbols: list[ExtractedSymbol] = field(default_factory=list)
     has_parse_errors: bool = False
     # Identity preserves the exact enclosing definition even for repeated names.
     parents: list[int | None] = field(default_factory=list)
+    calls: list[ExtractedCall] = field(default_factory=list)
 
 
-def parse_python(source: str, path: str, max_symbols: int = 100_000) -> ParsedFile:
+def parse_python(source: str, path: str, max_symbols: int = 100_000,
+                 max_calls: int = 100_000) -> ParsedFile:
     content = source.encode("utf-8")
     parser = Parser(PYTHON)
     tree = parser.parse(content)
@@ -70,6 +83,20 @@ def parse_python(source: str, path: str, max_symbols: int = 100_000) -> ParsedFi
                 parent.qualified_name if parent else None, "import",
                 node.start_point.row + 1, node.end_point.row + 1, statement))
             result.parents.append(positions[id(parent)] if parent else None)
+        elif node.type == "call":
+            function = node.child_by_field_name("function")
+            if function is not None:
+                direct = function.type == "identifier"
+                # Dynamic expressions can nest deeply: do not repeatedly decode
+                # an entire expression when only a short display label is saved.
+                expression = text(function) if direct else content[function.start_byte:
+                    min(function.end_byte, function.start_byte + 1200)].decode("utf-8", errors="ignore")[:300]
+                result.calls.append(ExtractedCall(expression[:300], expression if direct else None,
+                    positions[id(parent)] if parent else None,
+                    "direct" if direct else "attribute" if function.type == "attribute" else "dynamic",
+                    node.start_point.row + 1, node.end_point.row + 1, node.start_point.column + 1))
+                if len(result.calls) > max_calls:
+                    raise ParsingError("Repository exceeds the 100,000 call limit.")
         if len(result.symbols) > max_symbols:
             raise ParsingError("Repository exceeds the 100,000 symbol limit.")
         stack.extend((child, next_parent) for child in reversed(node.named_children))

@@ -15,6 +15,8 @@ from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, So
 from .parsing import ParsingError, parse_repository
 from .relationships import dependency_graph, file_relationships
 from .schemas import DependencyGraphRead, RelationshipPageRead
+from .schemas import CallPageRead
+from .calls import file_calls
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
                       SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
@@ -50,7 +52,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.10.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.11.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -229,6 +231,17 @@ def create_app(database_url: str | None = None) -> FastAPI:
                      summary="Inspect up to 12 directly connected local Python files")
     def graph(repository_id: int, file_id: int, session: Session = Depends(get_index_session)):
         result = dependency_graph(session, repository_id, file_id)
+        if result is None:
+            raise HTTPException(404, "File not found in this repository.")
+        return result
+
+    @application.get("/repositories/{repository_id}/files/{file_id}/calls", response_model=CallPageRead,
+                     summary="Inspect call sites and approximate same-file definition matches")
+    def calls(repository_id: int, file_id: int,
+              resolution: Literal["candidate", "ambiguous", "unresolved"] | None = None,
+              limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0),
+              session: Session = Depends(get_index_session)):
+        result = file_calls(session, repository_id, file_id, resolution, limit, offset)
         if result is None:
             raise HTTPException(404, "File not found in this repository.")
         return result

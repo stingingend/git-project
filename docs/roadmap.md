@@ -14,5 +14,7 @@ Each milestone should work on its own and include a focused check.
 | 8 — complete | Resolve structural relationships | Containment, imports, and directed graphs |
 | 9 — complete | Add PostgreSQL, Docker, and CI | Persistent storage and repeatable checks |
 | 10 — complete | Visualize file dependencies | Directed edges, bounded neighborhoods, and graph navigation |
+| 11 — complete | Inspect approximate call sites | Syntax traversal, lexical candidates, uncertainty, and source navigation |
+| 12 | Run indexing in background jobs | Job lifecycle, progress polling, and recovery |
 
-Later: approximate call resolution, background indexing jobs, and incremental indexing. Semantic search and cited Q&A come after the structural index works reliably.
+Later: broader call resolution, incremental indexing, and schema migrations. Semantic search and cited Q&A come after the structural index works reliably.

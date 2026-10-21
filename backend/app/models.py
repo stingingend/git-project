@@ -100,3 +100,26 @@ class RelationshipSnapshot(Base):
 
     repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
     commit_sha: Mapped[str] = mapped_column(String(40))
+
+
+class CallSnapshot(Base):
+    __tablename__ = "call_snapshots"
+
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
+    commit_sha: Mapped[str] = mapped_column(String(40))
+
+
+class CallSite(Base):
+    __tablename__ = "call_sites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("source_files.id"), index=True)
+    caller_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    target_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    expression: Mapped[str] = mapped_column(Text)
+    call_type: Mapped[str] = mapped_column(String(20))
+    resolution: Mapped[str] = mapped_column(String(20))
+    start_line: Mapped[int]
+    end_line: Mapped[int]
+    column: Mapped[int]

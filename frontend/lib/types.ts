@@ -117,3 +117,17 @@ export type DependencyGraph = {
   nodes: { id: number; path: string }[];
   edges: { source: number; target: number; count: number }[];
 };
+
+export type CallPage = {
+  file_id: number;
+  ready: boolean;
+  commit_sha: string | null;
+  has_parse_errors: boolean;
+  summary: { total: number; candidates: number; ambiguous: number; unresolved: number };
+  items: { id: number; expression: string; call_type: string; start_line: number;
+    end_line: number; column: number; resolution: string;
+    caller: SymbolRecord | null; target: SymbolRecord | null }[];
+  total: number;
+  limit: number;
+  offset: number;
+};

@@ -67,6 +67,11 @@ def test_postgres_index_search_graph_replacement_and_rollback(postgres_client):
     graph = client.get(prefix + f"/files/{file_id}/graph").json()
     assert graph["total_neighbors"] == 1
     assert graph["edges"][0]["count"] == 1
+    calls = client.get(prefix + f"/files/{file_id}/calls").json()
+    assert calls["ready"] and calls["total"] == 1
+    assert calls["items"][0]["expression"] == "work"
+    # Imported work is outside this phase's same-file definition matcher.
+    assert calls["items"][0]["resolution"] == "unresolved"
     # Real PostgreSQL foreign keys require edges to be deleted before symbols.
     assert client.post(prefix + "/parse").status_code == 200
     symbols = client.get(prefix + "/symbols").json()
@@ -89,6 +94,7 @@ def test_postgres_index_search_graph_replacement_and_rollback(postgres_client):
         clear_parse_results(session, int(prefix.split("/")[-1]))
         session.commit()
     assert client.get(url).json()["ready"] is False
+    assert client.get(prefix + f"/files/{file_id}/calls").json()["ready"] is False
     assert client.get(prefix + "/search", params={"q": "Service"}).json()["items"] == []
 
 
