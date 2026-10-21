@@ -12,6 +12,6 @@ Each milestone should work on its own and include a focused check.
 | 6 — complete | Build a minimal repository UI | React state, requests, loading, and errors |
 | 7 — complete | Search symbols and navigate source | Filtering, identifiers, and source highlighting |
 | 8 — complete | Resolve structural relationships | Containment, imports, and directed graphs |
-| 9 | Add PostgreSQL, Docker, and CI | Persistent storage and repeatable checks |
+| 9 — complete | Add PostgreSQL, Docker, and CI | Persistent storage and repeatable checks |
 
 Later: dependency visualization, approximate call resolution, background indexing jobs, and incremental indexing. Semantic search and cited Q&A come after the structural index works reliably.

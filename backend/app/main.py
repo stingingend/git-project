@@ -4,8 +4,8 @@ import threading
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .database import Base, create_database
@@ -31,6 +31,9 @@ def get_index_session(request: Request):
             # SQLite's legacy driver mode does not begin a transaction for SELECT.
             # Keep source, parse metadata, and symbol pages on the same read snapshot.
             session.connection().exec_driver_sql("BEGIN")
+        elif session.get_bind().dialect.name == "postgresql":
+            # READ COMMITTED can mix two index generations across SELECTs.
+            session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
         yield session
 
 
@@ -47,13 +50,21 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.8.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.9.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
     @application.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @application.get("/ready", summary="Check database connectivity")
+    def ready(session: Session = Depends(get_session)):
+        try:
+            session.execute(text("SELECT 1"))
+        except SQLAlchemyError as exc:
+            raise HTTPException(503, "Database unavailable.") from exc
+        return {"status": "ready"}
 
     @application.post("/repositories", response_model=RepositoryRead, status_code=201,
                       summary="Register a GitHub repository URL (step 1)")

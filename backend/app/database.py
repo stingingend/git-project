@@ -8,8 +8,11 @@ class Base(DeclarativeBase):
 
 
 def create_database(database_url: str):
+    url = make_url(database_url)
+    if url.drivername in {"postgres", "postgresql"}:
+        url = url.set(drivername="postgresql+psycopg")
     # FastAPI may handle successive requests on different threads.
-    connect_args = {"check_same_thread": False} if make_url(database_url).get_backend_name() == "sqlite" else {}
-    engine = create_engine(database_url, connect_args=connect_args)
+    connect_args = {"check_same_thread": False} if url.get_backend_name() == "sqlite" else {}
+    engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     return engine, sessions

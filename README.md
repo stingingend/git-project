@@ -4,9 +4,18 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: structural relationships
+## Current milestone: PostgreSQL, Docker, and CI
 
-The Next.js interface now shows containment and Python module dependencies for each selected file. Browse outgoing imports or incoming importers and open linked source files. Unresolved and ambiguous imports are labeled explicitly. Symbol search and source highlighting remain available. See [the relationship walkthrough](docs/relationships.md) for supported layouts and limits.
+CodeAtlas now has an optional PostgreSQL backend, a Docker Compose stack, and GitHub Actions checks. The website still supports symbol search, source navigation, and structural relationships. See [the deployment guide](docs/deployment.md) for container startup, database configuration, and checks.
+
+With Docker Desktop running, start from the repository root:
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build --wait
+```
+
+Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
 ![CodeAtlas file relationships](docs/relationships-preview.png)
 
@@ -42,7 +51,7 @@ The API creates `codeatlas-metadata.db` in the directory where you start it. Thi
 $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 ```
 
-PostgreSQL setup and schema migrations will come in later milestones. For now, startup creates missing tables; it does not migrate existing tables when their columns change.
+PostgreSQL is optional; see [the deployment guide](docs/deployment.md). Startup creates missing tables; schema migrations and data transfer between databases are future work.
 
 Startup creates missing tables alongside existing data. After pulling updates, install dependencies and restart the servers. Re-index previously parsed repositories to populate the new relationship tables.
 
