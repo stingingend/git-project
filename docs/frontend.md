@@ -1,5 +1,7 @@
 # Milestone 6: a local web interface
 
+This walkthrough describes the first frontend milestone. [Milestone 7](symbol-search.md) adds repository-wide search and in-page symbol navigation.
+
 The project now has a Next.js frontend. A user can enter a GitHub URL and run the existing API workflow without finding endpoints or writing JSON in Swagger.
 
 ## Follow one interaction

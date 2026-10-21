@@ -23,15 +23,18 @@ import {
   Terminal,
   X,
 } from "lucide-react";
-import { createApi, indexRepository } from "../lib/api";
+import { createApi, indexRepository, loadSymbolSource } from "../lib/api";
 import type {
   FileDetail,
   Overview,
   Repository,
   SourceFile,
   Stage,
+  SearchHit,
+  SourceSelection,
 } from "../lib/types";
 import { SourceViewer } from "../components/source-viewer";
+import { SymbolSearch } from "../components/symbol-search";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "ingesting", "parsing"];
@@ -50,6 +53,7 @@ export default function Home() {
   const [files, setFiles] = useState<SourceFile[]>([]);
   const [detail, setDetail] = useState<FileDetail | null>(null);
   const [activeFile, setActiveFile] = useState<number | null>(null);
+  const [selection, setSelection] = useState<SourceSelection | null>(null);
   const [url, setUrl] = useState("");
   const [filter, setFilter] = useState("");
   const [visibleFiles, setVisibleFiles] = useState(100);
@@ -62,6 +66,16 @@ export default function Home() {
   const [revision, setRevision] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const fileRequest = useRef(0);
+  const explorer = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selection)
+      explorer.current?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+  }, [selection]);
 
   useEffect(() => {
     let active = true;
@@ -89,6 +103,7 @@ export default function Home() {
     setOverview(null);
     setFiles([]);
     setDetail(null);
+    setSelection(null);
     setActiveFile(null);
     setFilter("");
     setVisibleFiles(100);
@@ -142,6 +157,7 @@ export default function Home() {
     setBusy(true);
     setError("");
     setStage("registering");
+    setSelection(null);
     fileRequest.current++;
     setFileLoading(false);
     let targetId: number | undefined;
@@ -171,9 +187,14 @@ export default function Home() {
     setBusy(false);
   }
 
-  async function openFile(fileId: number, offset = 0) {
+  async function openFile(
+    fileId: number,
+    offset = 0,
+    preserveSelection = false,
+  ) {
     if (selectedId === null || busy) return;
     const request = ++fileRequest.current;
+    if (!preserveSelection) setSelection(null);
     setActiveFile(fileId);
     setFileLoading(true);
     if (fileId !== activeFile) setDetail(null);
@@ -195,6 +216,31 @@ export default function Home() {
         : "smooth",
     });
     input.current?.focus({ preventScroll: true });
+  }
+
+  async function openSymbol(hit: SearchHit, commitSha: string) {
+    if (selectedId === null || busy) return;
+    const request = ++fileRequest.current;
+    setFileLoading(true);
+    setSelection(null);
+    setError("");
+    setActiveFile(hit.symbol.file_id);
+    if (hit.symbol.file_id !== activeFile) setDetail(null);
+    try {
+      const loaded = await loadSymbolSource(api, selectedId, hit, commitSha);
+      if (request !== fileRequest.current) return;
+      setDetail(loaded.detail);
+      setSelection({
+        symbol: loaded.symbol,
+        commit_sha: loaded.commit_sha,
+        request,
+      });
+      setFilter("");
+    } catch (e) {
+      if (request === fileRequest.current) setError((e as Error).message);
+    } finally {
+      if (request === fileRequest.current) setFileLoading(false);
+    }
   }
 
   const filtered = files.filter((file) =>
@@ -283,7 +329,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.6</span>
+            Local development <span className="version">v0.7</span>
           </span>
         </header>
         <div className="content">
@@ -542,6 +588,13 @@ export default function Home() {
                   Recovered symbols may be incomplete.
                 </div>
               )}
+              <SymbolSearch
+                key={`${selectedId}:${revision}`}
+                repositoryId={overview.repository.id}
+                parsed={overview.parsing !== null}
+                disabled={busy}
+                select={(hit, commit) => void openSymbol(hit, commit)}
+              />
               <div className="section-heading">
                 <h2>
                   Repository explorer <span>{files.length}</span>
@@ -551,7 +604,7 @@ export default function Home() {
                   Saved source snapshot
                 </span>
               </div>
-              <section className="explorer">
+              <section className="explorer" ref={explorer}>
                 <div className="file-browser">
                   <div className="filter-input">
                     <Search size={14} />
@@ -611,14 +664,27 @@ export default function Home() {
                         key={`${detail.file.id}:${detail.commit_sha}`}
                         detail={detail}
                         busy={fileLoading || busy}
+                        selection={selection}
+                        clearSelection={() => setSelection(null)}
+                        selectSymbol={(symbol) =>
+                          void openSymbol(
+                            {
+                              symbol,
+                              path: detail.file.path,
+                              has_parse_errors:
+                                detail.parsing?.has_parse_errors ?? false,
+                            },
+                            detail.commit_sha,
+                          )
+                        }
                         loadSymbols={(offset) =>
-                          void openFile(detail.file.id, offset)
+                          void openFile(detail.file.id, offset, true)
                         }
                       />
                       {fileLoading && (
                         <div className="file-refresh" role="status">
                           <LoaderCircle size={12} className="spin" />
-                          Loading symbol page…
+                          Loading source…
                         </div>
                       )}
                     </>

@@ -121,11 +121,14 @@ def test_reingestion_invalidates_symbols_and_parse_metadata(client, local_clone,
     assert client.post(prefix + "/ingest").status_code == 200
     assert client.post(prefix + "/parse").status_code == 200
     assert len(client.get(prefix + "/symbols").json()) == 1
+    assert client.get(prefix + "/search", params={"q": "hello"}).json()["total"] == 1
     assert client.get(prefix + "/parse").status_code == 200
     assert client.post(prefix + "/ingest").status_code == 200
     assert client.get(prefix + "/parse").status_code == 404
     assert client.get(prefix + "/parse/files").status_code == 404
     assert client.get(prefix + "/symbols").json() == []
+    search = client.get(prefix + "/search", params={"q": "hello"}).json()
+    assert search["parsed"] is False and search["items"] == []
     assert client.get(prefix).json()["status"] == "ingested"
 
 

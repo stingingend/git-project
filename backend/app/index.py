@@ -1,7 +1,7 @@
 """Read the stored index without cloning or parsing during a query."""
 from urllib.parse import quote
 
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
@@ -65,3 +65,34 @@ def symbol_detail(session: Session, repository_id: int, symbol_id: int) -> dict 
         "commit_sha": snapshot.commit_sha, "has_parse_errors": parsing.has_parse_errors,
         "github_url": f"{source_url(repository, snapshot, file.path)}#L{symbol.start_line}-L{symbol.end_line}",
     }
+
+
+def search_symbols(session: Session, repository_id: int, query: str,
+                   kind: str | None, limit: int, offset: int) -> dict | None:
+    repository = session.get(Repository, repository_id)
+    if repository is None:
+        return None
+    parsed = session.get(ParseSnapshot, repository_id)
+    response = {"repository_id": repository_id, "query": query,
+                "parsed": parsed is not None, "commit_sha": parsed.commit_sha if parsed else None,
+                "items": [], "total": 0, "limit": limit, "offset": offset}
+    if parsed is None:
+        return response
+    # Treat %, _, and the escape character as literal search text, not SQL wildcards.
+    matches = or_(Symbol.name.icontains(query, autoescape=True),
+                  Symbol.qualified_name.icontains(query, autoescape=True),
+                  Symbol.signature.icontains(query, autoescape=True),
+                  SourceFile.path.icontains(query, autoescape=True))
+    conditions = [SourceFile.repository_id == repository_id, matches]
+    if kind is not None:
+        conditions.append(Symbol.symbol_type == kind)
+    response["total"] = session.scalar(select(func.count(Symbol.id)).join(SourceFile).where(*conditions))
+    rank = case((func.lower(Symbol.name) == query.lower(), 0),
+                (Symbol.name.istartswith(query, autoescape=True), 1), else_=2)
+    rows = session.execute(select(Symbol, SourceFile.path, FileParse.has_parse_errors)
+        .join(SourceFile, SourceFile.id == Symbol.file_id)
+        .join(FileParse, FileParse.file_id == SourceFile.id).where(*conditions)
+        .order_by(rank, SourceFile.path, Symbol.start_line, Symbol.id).limit(limit).offset(offset))
+    response["items"] = [{"symbol": symbol, "path": path, "has_parse_errors": errors}
+                         for symbol, path, errors in rows]
+    return response

@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from .database import Base, create_database
 from .ingestion import IngestionError, ingest_repository
-from .index import file_detail, repository_overview, symbol_detail
+from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
 from .parsing import ParsingError, parse_repository
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
-                      SnapshotRead, SymbolDetailRead, SymbolRead)
+                      SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
 
 
 def get_session(request: Request):
@@ -45,7 +45,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.5.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.7.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -183,6 +183,20 @@ def create_app(database_url: str | None = None) -> FastAPI:
         result = symbol_detail(session, repository_id, symbol_id)
         if result is None:
             raise HTTPException(404, "Symbol not found in this repository.")
+        return result
+
+    @application.get("/repositories/{repository_id}/search", response_model=SymbolSearchRead,
+                     summary="Search saved symbol names, scopes, signatures, and file paths")
+    def search(repository_id: int, q: str = Query(min_length=1, max_length=200),
+               kind: Literal["function", "class", "method", "import"] | None = None,
+               limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0),
+               session: Session = Depends(get_index_session)):
+        query = q.strip()
+        if not query:
+            raise HTTPException(422, "Enter a non-empty search term.")
+        result = search_symbols(session, repository_id, query, kind, limit, offset)
+        if result is None:
+            raise HTTPException(404, "Repository not found.")
         return result
 
     return application

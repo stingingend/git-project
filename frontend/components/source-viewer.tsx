@@ -6,19 +6,29 @@ import {
   ChevronRight,
   ExternalLink,
   FileCode2,
+  X,
 } from "lucide-react";
-import type { FileDetail } from "../lib/types";
-
-const PAGE_SIZE = 200;
+import type { FileDetail, SourceSelection, SymbolRecord } from "../lib/types";
+import {
+  SOURCE_PAGE_SIZE as PAGE_SIZE,
+  isSelectedLine,
+  pageForLine,
+} from "../lib/source-range";
 
 export function SourceViewer({
   detail,
   busy,
   loadSymbols,
+  selection,
+  selectSymbol,
+  clearSelection,
 }: {
   detail: FileDetail;
   busy: boolean;
   loadSymbols: (offset: number) => void;
+  selection: SourceSelection | null;
+  selectSymbol: (symbol: SymbolRecord) => void;
+  clearSelection: () => void;
 }) {
   const [tab, setTab] = useState<"source" | "symbols">("source");
   const [page, setPage] = useState(0);
@@ -26,6 +36,31 @@ export function SourceViewer({
   useEffect(() => {
     if (panel.current) panel.current.scrollTop = 0;
   }, [page, tab, detail.symbols.offset]);
+  const selected =
+    selection?.commit_sha === detail.commit_sha &&
+    selection.symbol.file_id === detail.file.id
+      ? selection
+      : null;
+  useEffect(() => {
+    if (selected) {
+      setTab("source");
+      setPage(pageForLine(selected.symbol.start_line));
+    }
+  }, [selected, detail.file.id, detail.commit_sha]);
+  useEffect(() => {
+    if (!selected || tab !== "source" || !panel.current) return;
+    const row = panel.current.querySelector<HTMLElement>(
+      `[data-line="${selected.symbol.start_line}"]`,
+    );
+    if (row) {
+      const top =
+        panel.current.scrollTop +
+        row.getBoundingClientRect().top -
+        panel.current.getBoundingClientRect().top -
+        panel.current.clientHeight / 3;
+      panel.current.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+    }
+  }, [selected, page, tab]);
   const lines = detail.source ? detail.source.split("\n") : [];
   if (lines.at(-1) === "") lines.pop();
   const pages = Math.max(1, Math.ceil(lines.length / PAGE_SIZE));
@@ -38,14 +73,31 @@ export function SourceViewer({
           {detail.file.path}
         </span>
         <a
-          href={detail.github_url}
+          href={
+            selected
+              ? `${detail.github_url}#L${selected.symbol.start_line}-L${selected.symbol.end_line}`
+              : detail.github_url
+          }
           target="_blank"
           rel="noreferrer"
-          aria-label="View file on GitHub"
+          aria-label={
+            selected ? "View selected symbol on GitHub" : "View file on GitHub"
+          }
         >
           GitHub <ExternalLink size={12} />
         </a>
       </div>
+      {selected && (
+        <div className="selection-banner">
+          <span>
+            <strong>{selected.symbol.name}</strong> · lines{" "}
+            {selected.symbol.start_line}–{selected.symbol.end_line}
+          </span>
+          <button aria-label="Clear source selection" onClick={clearSelection}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
       <div className="viewer-tabs" role="tablist" aria-label="File content">
         <button
           role="tab"
@@ -87,7 +139,20 @@ export function SourceViewer({
                 lines
                   .slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
                   .map((line, index) => (
-                    <div key={page * PAGE_SIZE + index}>
+                    <div
+                      key={page * PAGE_SIZE + index}
+                      data-line={page * PAGE_SIZE + index + 1}
+                      className={
+                        selected &&
+                        isSelectedLine(
+                          page * PAGE_SIZE + index + 1,
+                          selected.symbol.start_line,
+                          selected.symbol.end_line,
+                        )
+                          ? "selected-source-line"
+                          : ""
+                      }
+                    >
                       <span className="line-number">
                         {page * PAGE_SIZE + index + 1}
                       </span>
@@ -135,12 +200,11 @@ export function SourceViewer({
             aria-label="File symbols"
           >
             {symbols.items.map((symbol) => (
-              <a
+              <button
                 className="symbol-row"
                 key={symbol.id}
-                href={`${detail.github_url}#L${symbol.start_line}-L${symbol.end_line}`}
-                target="_blank"
-                rel="noreferrer"
+                disabled={busy}
+                onClick={() => selectSymbol(symbol)}
               >
                 <span className={`symbol-kind ${symbol.symbol_type}`}>
                   {symbol.symbol_type}
@@ -151,9 +215,9 @@ export function SourceViewer({
                 </span>
                 <small>
                   L{symbol.start_line}–{symbol.end_line}
-                  <ExternalLink size={11} />
+                  <ChevronRight size={11} />
                 </small>
-              </a>
+              </button>
             ))}
             {!symbols.items.length && (
               <div className="panel-empty">
@@ -168,7 +232,7 @@ export function SourceViewer({
               {symbols.total === null
                 ? "Not parsed"
                 : `${symbols.total.toLocaleString()} symbols`}{" "}
-              · Links open the indexed commit
+              · Select to view source
             </span>
             <div>
               <button

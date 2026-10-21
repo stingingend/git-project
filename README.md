@@ -4,11 +4,11 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: local web interface
+## Current milestone: symbol search and source navigation
 
-A Next.js web interface now guides the full workflow: enter a public GitHub URL, index its Python source, inspect repository statistics, and browse files and symbols. FastAPI still handles ingestion, parsing, and storage. Symbol search and relationship graphs come in later milestones.
+The Next.js interface now searches the saved repository index by symbol name, scope, signature, or file path. Select a search result or a file symbol to open its source, jump to the right page, and highlight the definition. FastAPI still handles ingestion, parsing, storage, and queries. Structural relationships and graphs come next.
 
-![CodeAtlas repository explorer](docs/frontend-preview.png)
+![CodeAtlas symbol search and source navigation](docs/symbol-search-preview.png)
 
 ### Run locally
 
@@ -178,6 +178,22 @@ Use the port your API server is running on; the current examples use `8001`. Cho
 
 These GET endpoints only read stored data. They do not clone, parse, execute source, or write records. Links use `/blob/{commit_sha}/...`, including line fragments for symbols. Snippets preserve indentation and internal line breaks, omitting the LF after the last selected line. The SQLite inspection endpoints use a read transaction to keep source and symbol queries on one snapshot during concurrent writes.
 
+### Search symbols and jump to source
+
+After indexing, use **Find a definition** to search the selected repository. Type a name such as `sign`, a qualified name such as `::Signer.sign`, a signature fragment, or a file path. Filter by function, class, method, or import, and use the result-page controls for more matches.
+
+Select a result to open its file and highlight the definition. The viewer automatically selects the correct 200-line source page and scrolls within that pane. The **Symbols** tab now selects source in the same way. The **GitHub** link opens the selected lines at the indexed commit; **Clear source selection** removes the highlight.
+
+Search is a literal substring lookup over stored names, qualified names, signatures, and paths. It does not search arbitrary function bodies or interpret natural language. `%` and `_` are literal characters, not wildcard syntax. SQLite provides case-insensitive matching for ASCII; non-ASCII case folding is not promised. Exact names rank first, followed by name prefixes, then other matches in deterministic file/source order.
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/search?q=sign&kind=method&limit=20&offset=0'
+```
+
+`GET /repositories/{id}/search` accepts `q` (at most 200 characters, trimmed to a non-empty term), optional `kind`, `limit` (1–100, default 20), and `offset` (0 or greater). It returns a total count, a page of `{symbol, path, has_parse_errors}` items, the normalized query, and the parsed commit hash. For an unparsed repository, `parsed` is false, the commit is null, and results are empty. Missing repositories return `404`; invalid parameters return `422`.
+
+The UI waits 200 ms after typing and ignores obsolete responses when the query or repository changes. Re-indexing clears the current search and source selection. Navigation verifies symbol identity and commit before showing source; if the index changed externally, refresh the page and search again. Search reads the saved index without cloning or executing code.
+
 ### Run the tests
 
 From the repository root:
@@ -201,7 +217,7 @@ npm start
 
 The UI displays existing registered/ingested repositories on load. **Run indexing** or **Re-index** recollects and parses their source. A failure keeps the backend's last successful stage; the error appears in the page and the repository can be retried. Indexing is synchronous, so keep the tab open while it runs.
 
-Source is rendered as text, never HTML. The viewer shows at most 200 source lines at a time. Symbols use the API's 100-record pages, and their links open the indexed GitHub commit. The file filter matches file paths locally; repository-wide symbol search belongs to the next milestone.
+Source is rendered as text, never HTML. The viewer shows at most 200 source lines at a time. File symbols use the API's 100-record pages; select a symbol to open its source. The GitHub link points to the indexed commit and the selected line range. The file filter matches file paths locally; repository-wide search uses the backend index.
 
 ## How this step works
 
@@ -227,3 +243,5 @@ See [the index inspection walkthrough](docs/index-inspection.md) for the new rea
 See [the roadmap](docs/roadmap.md) for the next steps.
 
 See [the frontend walkthrough](docs/frontend.md) for component state, the API proxy, and the indexing workflow.
+
+See [the search walkthrough](docs/symbol-search.md) for literal matching, paging, selection, and stale-index handling.

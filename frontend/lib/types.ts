@@ -35,6 +35,7 @@ export type SourceFile = {
 };
 export type SymbolRecord = {
   id: number;
+  file_id: number;
   name: string;
   qualified_name: string;
   signature: string;
@@ -56,3 +57,32 @@ export type FileDetail = {
   };
 };
 export type Stage = "registering" | "ingesting" | "parsing";
+
+export type SearchHit = {
+  symbol: SymbolRecord;
+  path: string;
+  has_parse_errors: boolean;
+};
+export type SearchPage = {
+  repository_id: number;
+  query: string;
+  parsed: boolean;
+  commit_sha: string | null;
+  items: SearchHit[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+export type SymbolDetail = {
+  symbol: SymbolRecord;
+  file: SourceFile;
+  source: string;
+  commit_sha: string;
+  github_url: string;
+  has_parse_errors: boolean;
+};
+export type SourceSelection = {
+  symbol: SymbolRecord;
+  commit_sha: string;
+  request: number;
+};

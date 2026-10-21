@@ -4,6 +4,9 @@ import type {
   Repository,
   SourceFile,
   Stage,
+  SearchPage,
+  SearchHit,
+  SymbolDetail,
 } from "./types";
 
 export class ApiError extends Error {
@@ -67,10 +70,52 @@ export function createApi(fetcher: typeof fetch = fetch) {
       request<FileDetail>(
         `/repositories/${id}/files/${fileId}?limit=100&offset=${offset}`,
       ),
+    search: (id: number, query: string, kind = "", offset = 0) => {
+      const params = new URLSearchParams({
+        q: query,
+        limit: "20",
+        offset: String(offset),
+      });
+      if (kind) params.set("kind", kind);
+      return request<SearchPage>(`/repositories/${id}/search?${params}`);
+    },
+    symbol: (id: number, symbolId: number) =>
+      request<SymbolDetail>(`/repositories/${id}/symbols/${symbolId}`),
   };
 }
 
 export type Api = ReturnType<typeof createApi>;
+
+export async function loadSymbolSource(
+  api: Api,
+  repositoryId: number,
+  hit: SearchHit,
+  commitSha: string,
+) {
+  const selected = await api.symbol(repositoryId, hit.symbol.id);
+  const current = selected.symbol;
+  if (
+    selected.commit_sha !== commitSha ||
+    current.file_id !== hit.symbol.file_id ||
+    current.qualified_name !== hit.symbol.qualified_name ||
+    current.start_line !== hit.symbol.start_line ||
+    current.end_line !== hit.symbol.end_line ||
+    selected.file.path !== hit.path
+  ) {
+    throw new ApiError(
+      "The index changed. Refresh the repository and search again.",
+      409,
+    );
+  }
+  const detail = await api.file(repositoryId, current.file_id);
+  if (detail.commit_sha !== commitSha || detail.file.path !== hit.path) {
+    throw new ApiError(
+      "The index changed. Refresh the repository and search again.",
+      409,
+    );
+  }
+  return { detail, symbol: current, commit_sha: commitSha };
+}
 
 export async function indexRepository(
   url: string,

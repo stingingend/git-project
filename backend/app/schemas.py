@@ -141,3 +141,20 @@ class SymbolDetailRead(BaseModel):
     commit_sha: str
     has_parse_errors: bool
     github_url: str
+
+
+class SymbolSearchItemRead(BaseModel):
+    symbol: SymbolRead
+    path: str
+    has_parse_errors: bool
+
+
+class SymbolSearchRead(BaseModel):
+    repository_id: int
+    query: str
+    parsed: bool
+    commit_sha: str | None
+    items: list[SymbolSearchItemRead]
+    total: int
+    limit: int
+    offset: int
