@@ -3,7 +3,7 @@ import ast
 from collections import defaultdict
 from pathlib import PurePosixPath
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased
 
 from .models import Relationship, RelationshipSnapshot, SourceFile, Symbol
@@ -116,3 +116,32 @@ def file_relationships(session, repository_id, file_id, kind, direction, limit, 
             start_line=dst.start_line if edge.kind == "contains" else src.start_line,
             target_file_id=dest.id if dest else None,
             target_path=dest.path if dest else None) for edge, src, dst, dest, origin in rows])
+
+
+def dependency_graph(session, repository_id, file_id):
+    """A bounded, one-hop view, aggregating repeated imports between files."""
+    center = session.scalar(select(SourceFile).where(SourceFile.id == file_id,
+                                                      SourceFile.repository_id == repository_id))
+    if center is None:
+        return None
+    snapshot = session.get(RelationshipSnapshot, repository_id)
+    pairs = session.execute(select(Relationship.file_id, Relationship.target_file_id, func.count())
+        .where(Relationship.repository_id == repository_id, Relationship.kind == "imports",
+               Relationship.resolution == "local", Relationship.target_file_id.is_not(None),
+               or_(Relationship.file_id == file_id, Relationship.target_file_id == file_id))
+        .group_by(Relationship.file_id, Relationship.target_file_id)).all() if snapshot else []
+    neighbors = {identifier for source, target, _ in pairs for identifier in (source, target)} - {file_id}
+    # Files are repository-scoped too; stable path ordering makes truncation predictable.
+    files = session.scalars(select(SourceFile).where(SourceFile.repository_id == repository_id,
+        SourceFile.id.in_(neighbors)).order_by(SourceFile.path, SourceFile.id).limit(12)).all() if neighbors else []
+    included = {file_id, *(file.id for file in files)}
+    unresolved = session.scalar(select(func.count()).select_from(Relationship).where(
+        Relationship.repository_id == repository_id, Relationship.file_id == file_id,
+        Relationship.kind == "imports", Relationship.resolution != "local")) if snapshot else 0
+    return dict(file_id=file_id, ready=snapshot is not None,
+        commit_sha=snapshot.commit_sha if snapshot else None,
+        total_neighbors=len(neighbors), unresolved_imports=unresolved,
+        self_imports=sum(count for source, target, count in pairs if source == target),
+        nodes=[dict(id=file.id, path=file.path) for file in [center, *files]],
+        edges=[dict(source=source, target=target, count=count) for source, target, count in pairs
+               if source != target and source in included and target in included])

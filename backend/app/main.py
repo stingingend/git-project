@@ -13,8 +13,8 @@ from .ingestion import IngestionError, ingest_repository
 from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
 from .parsing import ParsingError, parse_repository
-from .relationships import file_relationships
-from .schemas import RelationshipPageRead
+from .relationships import dependency_graph, file_relationships
+from .schemas import DependencyGraphRead, RelationshipPageRead
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
                       SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
@@ -50,7 +50,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.9.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.10.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -220,6 +220,15 @@ def create_app(database_url: str | None = None) -> FastAPI:
                       limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0),
                       session: Session = Depends(get_index_session)):
         result = file_relationships(session, repository_id, file_id, kind, direction, limit, offset)
+        if result is None:
+            raise HTTPException(404, "File not found in this repository.")
+        return result
+
+    @application.get("/repositories/{repository_id}/files/{file_id}/graph",
+                     response_model=DependencyGraphRead,
+                     summary="Inspect up to 12 directly connected local Python files")
+    def graph(repository_id: int, file_id: int, session: Session = Depends(get_index_session)):
+        result = dependency_graph(session, repository_id, file_id)
         if result is None:
             raise HTTPException(404, "File not found in this repository.")
         return result

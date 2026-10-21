@@ -8,6 +8,7 @@ import type {
   SearchHit,
   SymbolDetail,
   RelationshipPage,
+  DependencyGraph,
 } from "./types";
 
 export class ApiError extends Error {
@@ -82,6 +83,8 @@ export function createApi(fetcher: typeof fetch = fetch) {
     },
     symbol: (id: number, symbolId: number) =>
       request<SymbolDetail>(`/repositories/${id}/symbols/${symbolId}`),
+    graph: (id: number, fileId: number) =>
+      request<DependencyGraph>(`/repositories/${id}/files/${fileId}/graph`),
     relationships: (id: number, fileId: number, kind: string, direction: string, offset = 0) => {
       const params = new URLSearchParams({ direction, limit: "30", offset: String(offset) });
       if (kind) params.set("kind", kind);

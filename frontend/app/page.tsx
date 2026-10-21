@@ -36,6 +36,7 @@ import type {
 import { SourceViewer } from "../components/source-viewer";
 import { SymbolSearch } from "../components/symbol-search";
 import { Relationships } from "../components/relationships";
+import { DependencyGraph } from "../components/dependency-graph";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "ingesting", "parsing"];
@@ -330,7 +331,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.9</span>
+            Local development <span className="version">v0.10</span>
           </span>
         </header>
         <div className="content">
@@ -716,6 +717,15 @@ export default function Home() {
                   )}
                 </div>
               </section>
+              {detail && <DependencyGraph
+                key={`graph:${selectedId}:${revision}:${detail.file.id}:${detail.commit_sha}`}
+                repositoryId={selectedId!}
+                fileId={detail.file.id}
+                filePath={detail.file.path}
+                commitSha={detail.commit_sha}
+                busy={fileLoading || busy}
+                openFile={(id) => void openFile(id)}
+              />}
               {detail && <Relationships
                 key={`relations:${selectedId}:${revision}:${detail.file.id}:${detail.commit_sha}`}
                 repositoryId={selectedId!}

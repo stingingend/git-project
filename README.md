@@ -4,9 +4,9 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: PostgreSQL, Docker, and CI
+## Current milestone: dependency visualization
 
-CodeAtlas now has an optional PostgreSQL backend, a Docker Compose stack, and GitHub Actions checks. The website still supports symbol search, source navigation, and structural relationships. See [the deployment guide](docs/deployment.md) for container startup, database configuration, and checks.
+Select a Python file to explore a directed graph of its local dependencies and importers. Click connected files to navigate the codebase. Repeated imports are grouped, and the view explicitly reports unresolved targets and large neighborhoods. See [the graph walkthrough](docs/dependency-graph.md) for behavior and limits, or [the deployment guide](docs/deployment.md) for Docker and PostgreSQL setup.
 
 With Docker Desktop running, start from the repository root:
 
@@ -17,7 +17,7 @@ docker compose --env-file .env.docker up --build --wait
 
 Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
-![CodeAtlas refreshed workspace](docs/visual-refresh-preview.png)
+![CodeAtlas dependency graph](docs/dependency-graph-preview.png)
 
 ### Run locally
 

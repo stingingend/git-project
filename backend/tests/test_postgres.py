@@ -64,6 +64,9 @@ def test_postgres_index_search_graph_replacement_and_rollback(postgres_client):
     edges = client.get(url, params={"kind": "imports"}).json()
     assert edges["items"][0]["target_path"] == "pkg/helper.py"
     assert edges["items"][0]["resolution"] == "local"
+    graph = client.get(prefix + f"/files/{file_id}/graph").json()
+    assert graph["total_neighbors"] == 1
+    assert graph["edges"][0]["count"] == 1
     # Real PostgreSQL foreign keys require edges to be deleted before symbols.
     assert client.post(prefix + "/parse").status_code == 200
     symbols = client.get(prefix + "/symbols").json()

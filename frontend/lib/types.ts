@@ -106,3 +106,14 @@ export type RelationshipPage = {
     target_path: string | null;
   }[];
 };
+
+export type DependencyGraph = {
+  file_id: number;
+  ready: boolean;
+  commit_sha: string | null;
+  total_neighbors: number;
+  unresolved_imports: number;
+  self_imports: number;
+  nodes: { id: number; path: string }[];
+  edges: { source: number; target: number; count: number }[];
+};

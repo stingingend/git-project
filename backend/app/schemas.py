@@ -184,3 +184,25 @@ class RelationshipPageRead(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class GraphNodeRead(BaseModel):
+    id: int
+    path: str
+
+
+class GraphEdgeRead(BaseModel):
+    source: int
+    target: int
+    count: int
+
+
+class DependencyGraphRead(BaseModel):
+    file_id: int
+    ready: bool
+    commit_sha: str | None
+    total_neighbors: int
+    unresolved_imports: int
+    self_imports: int
+    nodes: list[GraphNodeRead]
+    edges: list[GraphEdgeRead]
