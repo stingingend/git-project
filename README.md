@@ -4,21 +4,37 @@ A code intelligence platform that will turn a public GitHub repository into an e
 
 The project starts with Python and structural analysis. Search and AI features will build on a real index later.
 
-## Current milestone: repository index inspection
+## Current milestone: local web interface
 
-The API can register a GitHub repository, ingest its tracked Python source, parse it with Tree-sitter, and inspect the stored index. An overview combines repository metadata with ingestion and symbol statistics. File and symbol inspection return saved source and commit-pinned GitHub links. The frontend and relationship graph come later.
+A Next.js web interface now guides the full workflow: enter a public GitHub URL, index its Python source, inspect repository statistics, and browse files and symbols. FastAPI still handles ingestion, parsing, and storage. Symbol search and relationship graphs come in later milestones.
+
+![CodeAtlas repository explorer](docs/frontend-preview.png)
 
 ### Run locally
 
-Requires Python 3.11 or newer and Git on the API server's PATH.
+Requires Python 3.11 or newer, Git on the API server's PATH, and Node.js 24 with npm for the frontend.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e './backend[test]'
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8001
 ```
 
-Open [the health endpoint](http://127.0.0.1:8000/health) or [the API documentation](http://127.0.0.1:8000/docs).
+Keep the API terminal open. In a second terminal, starting from the repository root:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open **http://127.0.0.1:3000**. Enter a URL such as `https://github.com/pallets/itsdangerous` and click **Index repository**. No JSON is needed in the web form. The UI runs registration, ingestion, and parsing in order and displays the resulting stored statistics. Select a file, then use its **Source** and **Symbols** tabs.
+
+The frontend sends `/api/*` requests through Next.js to `http://127.0.0.1:8001`. If the backend uses a different address, copy `frontend/.env.example` to `frontend/.env.local`, change `API_URL`, and restart Next.js. For production builds, set `API_URL` before building. There are no browser-side secrets and no additional CORS configuration is needed for this local proxy.
+
+Both servers bind to localhost. Public deployment is a later milestone. To stop a server, press **Ctrl+C** in its terminal. If port 3000 is occupied, stop the old frontend or run `npm run dev -- --port 3001`.
+
+Open [the health endpoint](http://127.0.0.1:8001/health) or [the API documentation](http://127.0.0.1:8001/docs).
 
 The API creates `codeatlas-metadata.db` in the directory where you start it. This file is ignored by Git. You can set `DATABASE_URL` before startup to choose another SQLite database, for example:
 
@@ -28,7 +44,7 @@ $env:DATABASE_URL = 'sqlite:///./my-codeatlas.db'
 
 PostgreSQL setup and schema migrations will come in later milestones. For now, startup creates missing tables; it does not migrate existing tables when their columns change.
 
-Startup creates missing tables alongside existing data. This milestone adds read endpoints without changing the database schema. After pulling updates, reinstall the backend dependencies and restart the API.
+Startup creates missing tables alongside existing data. The frontend milestone does not change the database schema or existing API contracts. After pulling updates, install the frontend dependencies and restart the servers.
 
 Expected response from `GET /health`:
 
@@ -42,9 +58,9 @@ With the API running, open another PowerShell terminal:
 
 ```powershell
 $body = @{ github_url = 'https://github.com/pallets/flask' } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/repositories' -ContentType 'application/json' -Body $body
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1'
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8001/repositories' -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1'
 ```
 
 The last command uses the ID returned by the first command; `1` is an example for a new database.
@@ -65,9 +81,9 @@ Registration validates the URL's format only. It does not contact GitHub, verify
 Using the ID returned by registration:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/repositories/1/ingest'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/snapshot'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/files'
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8001/repositories/1/ingest'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/snapshot'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/files'
 ```
 
 For a smaller first example, register `https://github.com/pallets/itsdangerous`.
@@ -99,10 +115,10 @@ This is still a local development API. Public hosting needs authentication, rate
 After a successful ingestion, use its repository ID:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/repositories/1/parse'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/parse'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/parse/files'
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/repositories/1/symbols?kind=method&limit=100&offset=0'
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8001/repositories/1/parse'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/parse'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/parse/files'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8001/repositories/1/symbols?kind=method&limit=100&offset=0'
 ```
 
 | Endpoint | Result |
@@ -142,7 +158,7 @@ File detail returns a `symbols` object with `items`, `total`, `limit`, and `offs
 
 ```powershell
 $repositoryId = 1 # replace with the ID returned by registration
-$base = "http://127.0.0.1:8000/repositories/$repositoryId"
+$base = "http://127.0.0.1:8001/repositories/$repositoryId"
 $overview = Invoke-RestMethod -Uri "$base/overview"
 $files = Invoke-RestMethod -Uri "$base/files"
 $file = Invoke-RestMethod -Uri "$base/files/$($files[0].id)?limit=20&offset=0"
@@ -158,7 +174,7 @@ $symbol.source
 $symbol.github_url
 ```
 
-Use the port your server is running on; substitute `8001` if you used the alternate startup command. Choose a file with symbols for the last example.
+Use the port your API server is running on; the current examples use `8001`. Choose a file with symbols for the last example.
 
 These GET endpoints only read stored data. They do not clone, parse, execute source, or write records. Links use `/blob/{commit_sha}/...`, including line fragments for symbols. Snippets preserve indentation and internal line breaks, omitting the LF after the last selected line. The SQLite inspection endpoints use a read transaction to keep source and symbol queries on one snapshot during concurrent writes.
 
@@ -169,6 +185,23 @@ From the repository root:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest backend/tests -q
 ```
+
+### Frontend checks and production build
+
+From `frontend/`:
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+npm start
+```
+
+`npm test` uses Node 24's built-in test runner to exercise request handling and workflow order with fake HTTP responses. A production build and `npm start` still need the FastAPI server running. The npm lockfile makes dependency installation repeatable.
+
+The UI displays existing registered/ingested repositories on load. **Run indexing** or **Re-index** recollects and parses their source. A failure keeps the backend's last successful stage; the error appears in the page and the repository can be retried. Indexing is synchronous, so keep the tab open while it runs.
+
+Source is rendered as text, never HTML. The viewer shows at most 200 source lines at a time. Symbols use the API's 100-record pages, and their links open the indexed GitHub commit. The file filter matches file paths locally; repository-wide symbol search belongs to the next milestone.
 
 ## How this step works
 
@@ -192,3 +225,5 @@ See [the parsing walkthrough](docs/parsing.md) for syntax trees, scope tracking,
 See [the index inspection walkthrough](docs/index-inspection.md) for the new read API and how a future frontend can use it.
 
 See [the roadmap](docs/roadmap.md) for the next steps.
+
+See [the frontend walkthrough](docs/frontend.md) for component state, the API proxy, and the indexing workflow.
