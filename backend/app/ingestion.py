@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import os
+import re
 from pathlib import Path, PurePosixPath
 import signal
 import subprocess
@@ -92,17 +93,26 @@ def stop_clone(process: subprocess.Popen) -> None:
 
 
 @contextmanager
-def clone_repository(github_url: str, limits: Limits = Limits()):
+def clone_repository(github_url: str, limits: Limits = Limits(), commit_sha: str | None = None):
     # Validate again at the network boundary, even for records already in storage.
     url = RepositoryCreate(github_url=github_url).github_url
+    if commit_sha is not None and not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
+        raise IngestionError("Requested revision must be a full lowercase Git commit SHA.")
     with tempfile.TemporaryDirectory(prefix="codeatlas-") as directory:
         root = Path(directory)
         destination = root / "repo"
+        if commit_sha:
+            destination.mkdir()
+            read_git(destination, "init", "--bare")
+            read_git(destination, "remote", "add", "origin", url)
+            command = git_command("-C", str(destination), "fetch", "--depth=1", "--no-tags", "origin", commit_sha)
+        else:
+            command = git_command("clone", "--depth=1", "--single-branch", "--no-tags",
+                                  "--no-checkout", "--", url, str(destination))
         try:
             with tempfile.TemporaryFile() as errors:
                 process = subprocess.Popen(
-                    git_command("clone", "--depth=1", "--single-branch", "--no-tags",
-                                "--no-checkout", "--", url, str(destination)),
+                    command,
                     env=git_environment(), stdout=subprocess.DEVNULL, stderr=errors,
                     start_new_session=os.name != "nt",
                 )
@@ -122,6 +132,11 @@ def clone_repository(github_url: str, limits: Limits = Limits()):
                     stop_clone(process)
         except FileNotFoundError as exc:
             raise IngestionError("Git must be installed on the API server.") from exc
+        if commit_sha:
+            read_git(destination, "update-ref", "HEAD", "FETCH_HEAD")
+            actual = read_git(destination, "rev-parse", "HEAD").decode("ascii").strip()
+            if actual != commit_sha:
+                raise IngestionError("Git returned a different commit than requested.")
         yield destination
 
 
@@ -174,11 +189,13 @@ def discover_python_files(path: Path, limits: Limits = Limits()) -> tuple[list[D
     return files, skipped
 
 
-def ingest_repository(session: Session, repository: Repository, limits: Limits = Limits()) -> RepositorySnapshot:
-    with clone_repository(repository.github_url, limits) as path:
+def ingest_repository(session: Session, repository: Repository, limits: Limits = Limits(),
+                      commit_sha: str | None = None) -> RepositorySnapshot:
+    clone = clone_repository(repository.github_url, limits, commit_sha) if commit_sha else clone_repository(repository.github_url, limits)
+    with clone as path:
         files, skipped = discover_python_files(path, limits)
         sha = read_git(path, "rev-parse", "HEAD").decode("ascii").strip()
-        branch = read_git(path, "symbolic-ref", "--short", "HEAD").decode("utf-8").strip()
+        branch = "commit" if commit_sha else read_git(path, "symbolic-ref", "--short", "HEAD").decode("utf-8").strip()
 
     # Diff after clone cleanup; unchanged source and index identities survive.
     existing = {file.path: file for file in session.scalars(select(SourceFile).where(

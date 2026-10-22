@@ -41,6 +41,7 @@ import { Relationships } from "../components/relationships";
 import { DependencyGraph } from "../components/dependency-graph";
 import { IntelligencePanel } from "../components/intelligence-panel";
 import { AnalysisPanel } from "../components/analysis-panel";
+import { PullRequestPanel } from "../components/pull-request-panel";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "queued", "ingesting", "parsing"];
@@ -237,6 +238,19 @@ export default function Home() {
     if (failure && !accepted) setBusy(false);
   }
 
+  async function indexCommit(commitSha: string) {
+    if (selectedId === null || busy) return;
+    setBusy(true); setError(""); setStage("queued"); setSelection(null);
+    fileRequest.current++; setFileLoading(false);
+    try {
+      const started = await api.startJob(selectedId, commitSha);
+      setJob(started);
+      setStage(started.stage === "complete" ? "complete" : started.stage);
+    } catch (reason) {
+      setError((reason as Error).message); setBusy(false); setStage(null);
+    }
+  }
+
   async function openFile(
     fileId: number,
     offset = 0,
@@ -380,7 +394,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.18</span>
+            Local development <span className="version">v0.19</span>
           </span>
         </header>
         <div className="content">
@@ -661,6 +675,8 @@ export default function Home() {
               {overview.parsing && <AnalysisPanel key={`analysis:${selectedId}:${revision}`} repositoryId={overview.repository.id}
                 commitSha={overview.snapshot?.commit_sha ?? ""} files={files} busy={busy} selectedSymbol={selection?.symbol}
                 selectFile={fileId => void openFile(fileId)} selectSymbol={(hit, commit) => void openSymbol(hit, commit)} />}
+              <PullRequestPanel key={`pr:${selectedId}:${revision}`} repositoryId={overview.repository.id}
+                commitSha={overview.snapshot?.commit_sha ?? ""} busy={busy} indexCommit={sha => void indexCommit(sha)} />
               <SymbolSearch
                 key={`${selectedId}:${revision}`}
                 repositoryId={overview.repository.id}

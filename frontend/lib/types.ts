@@ -112,6 +112,15 @@ export type ArchitectureReport = {
   cycles: {files: {file_id: number; path: string}[]; size: number; truncated: boolean}[];
   cycles_truncated: boolean; limitations: string[];
 };
+export type PullRequestReport = {
+  id: string; repository_id: number; number: number; status: "queued" | "running" | "succeeded" | "failed" | "interrupted";
+  created_at: string; finished_at: string | null; error: string | null;
+  result: null | {title: string; number: number; github_url: string; base_sha: string; head_sha: string;
+    commit_sha: string | null; comparable: boolean; requires_base_index: boolean; changed_file_count: number;
+    changed_symbol_count: number; symbols_truncated: boolean; impact: ImpactReport | null;
+    files: {path: string; status: string; additions: number; deletions: number; supported: boolean;
+      indexed: boolean; patch_available: boolean; changed_symbol_ids: number[]}[]; limitations: string[]};
+};
 export type SearchPage = {
   repository_id: number;
   query: string;

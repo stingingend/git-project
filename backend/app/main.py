@@ -9,9 +9,10 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .database import Base, create_database
+from .database import Base, create_database, begin_read_snapshot
 from .migrations import upgrade_database
 from .intelligence_routes import install as install_intelligence_routes
+from pydantic import BaseModel, Field
 from .ingestion import IngestionError, ingest_repository
 from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
@@ -26,6 +27,12 @@ from .schemas import IndexJobRead
 from .schemas import (FileDetailRead, FileParseRead, FileRead, ParseSnapshotRead,
                       RepositoryCreate, RepositoryOverviewRead, RepositoryRead,
                       SnapshotRead, SymbolDetailRead, SymbolRead, SymbolSearchRead)
+from .pull_requests import PullRequestWorker
+from .pr_routes import install as install_pr_routes
+
+
+class IndexRequest(BaseModel):
+    commit_sha: str | None = Field(None, pattern=r"^[0-9a-f]{40}$")
 
 
 def get_session(request: Request):
@@ -35,13 +42,7 @@ def get_session(request: Request):
 
 def get_index_session(request: Request):
     with request.app.state.sessions() as session:
-        if session.get_bind().dialect.name == "sqlite":
-            # SQLite's legacy driver mode does not begin a transaction for SELECT.
-            # Keep source, parse metadata, and symbol pages on the same read snapshot.
-            session.connection().exec_driver_sql("BEGIN")
-        elif session.get_bind().dialect.name == "postgresql":
-            # READ COMMITTED can mix two index generations across SELECTs.
-            session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+        begin_read_snapshot(session)
         yield session
 
 
@@ -55,14 +56,18 @@ def create_app(database_url: str | None = None) -> FastAPI:
         upgrade_database(engine)
         worker = IndexWorker(sessions, application.state.ingestion_lock)
         application.state.index_worker = worker
+        pr_worker = PullRequestWorker(sessions)
+        application.state.pull_request_worker = pr_worker
         try:
             worker.recover()
+            pr_worker.recover()
             yield
         finally:
             await asyncio.to_thread(worker.close)
+            await asyncio.to_thread(pr_worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.18.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.19.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -258,11 +263,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @application.post("/repositories/{repository_id}/jobs", response_model=IndexJobRead, status_code=202,
                       summary="Start a durable background ingestion and parse job")
-    def start_job(repository_id: int, session: Session = Depends(get_session)):
+    def start_job(repository_id: int, body: IndexRequest | None = None, session: Session = Depends(get_session)):
         if session.get(Repository, repository_id) is None:
             raise HTTPException(404, "Repository not found.")
         try:
-            return application.state.index_worker.submit(repository_id)
+            return application.state.index_worker.submit(repository_id, body.commit_sha if body else None)
         except IndexingBusy as exc:
             raise HTTPException(409, str(exc)) from exc
         except (RuntimeError, SQLAlchemyError) as exc:
@@ -282,6 +287,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return read_jobs(session, [job])[0]
 
     install_intelligence_routes(application, get_session, get_index_session)
+    install_pr_routes(application, get_session)
     return application
 
 

@@ -203,3 +203,24 @@ class SemanticSnapshot(Base):
     model: Mapped[str] = mapped_column(String(200))
     document_count: Mapped[int]
     indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class JobTarget(Base):
+    __tablename__ = "job_targets"
+
+    job_id: Mapped[str] = mapped_column(ForeignKey("index_jobs.id"), primary_key=True)
+    commit_sha: Mapped[str] = mapped_column(String(40))
+
+
+class PullRequestReport(Base):
+    __tablename__ = "pull_request_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), index=True)
+    number: Mapped[int]
+    delivery_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    status: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)

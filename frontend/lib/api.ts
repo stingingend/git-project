@@ -15,6 +15,7 @@ import type {
   CitedAnswer,
   ImpactReport,
   ArchitectureReport,
+  PullRequestReport,
 } from "./types";
 
 export class ApiError extends Error {
@@ -61,6 +62,11 @@ export function createApi(fetcher: typeof fetch = fetch) {
     return body as T;
   }
   return {
+    startPullRequest: (id: number, number: number) => request<PullRequestReport>(`/repositories/${id}/pull-requests`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({number}),
+    }),
+    pullRequests: (id: number) => request<PullRequestReport[]>(`/repositories/${id}/pull-requests?limit=10`),
+    pullRequest: (id: number, reportId: string) => request<PullRequestReport>(`/repositories/${id}/pull-requests/${encodeURIComponent(reportId)}`),
     impact: (id: number, fileIds: number[], symbolIds: number[] = []) => request<ImpactReport>(`/repositories/${id}/impact`, {
       method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({file_ids: fileIds, symbol_ids: symbolIds}),
     }),
@@ -74,7 +80,9 @@ export function createApi(fetcher: typeof fetch = fetch) {
     repositories: () => request<Repository[]>("/repositories"),
     jobs: () => request<IndexJob[]>("/jobs?limit=10"),
     job: (id: string) => request<IndexJob>(`/jobs/${encodeURIComponent(id)}`),
-    startJob: (repositoryId: number) => request<IndexJob>(`/repositories/${repositoryId}/jobs`, { method: "POST" }),
+    startJob: (repositoryId: number, commitSha?: string) => request<IndexJob>(`/repositories/${repositoryId}/jobs`, {
+      method: "POST", ...(commitSha ? {headers: {"Content-Type": "application/json"}, body: JSON.stringify({commit_sha: commitSha})} : {}),
+    }),
     register: (github_url: string) =>
       request<Repository>("/repositories", {
         method: "POST",

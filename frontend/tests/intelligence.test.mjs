@@ -22,3 +22,12 @@ test("questions opt into generation explicitly in a JSON body", async () => {
   });
   await api.ask(8, 'Where is "auth" handled?', false);
 });
+
+test("targeted indexing sends an explicit SHA without changing ordinary submissions", async () => {
+  const requests = [];
+  const api = createApi(async (url, options) => { requests.push({url, options}); return Response.json({id: "job"}); });
+  await api.startJob(3);
+  await api.startJob(3, "a".repeat(40));
+  assert.equal(requests[0].options.body, undefined);
+  assert.deepEqual(JSON.parse(requests[1].options.body), {commit_sha: "a".repeat(40)});
+});

@@ -7,6 +7,13 @@ class Base(DeclarativeBase):
     pass
 
 
+def begin_read_snapshot(session):
+    if session.get_bind().dialect.name == "sqlite":
+        session.connection().exec_driver_sql("BEGIN")
+    elif session.get_bind().dialect.name == "postgresql":
+        session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+
+
 def create_database(database_url: str):
     url = make_url(database_url)
     if url.drivername in {"postgres", "postgresql"}:

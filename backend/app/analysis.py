@@ -45,14 +45,14 @@ def reverse_walk(seeds, reverse, max_depth, max_nodes=5000):
     return depths, via, truncated
 
 
-def impact(session, repository_id, file_ids=(), symbol_ids=(), max_depth=6, limit=100):
+def impact(session, repository_id, file_ids=(), symbol_ids=(), max_depth=6, limit=100, seed_all_file_symbols=True):
     _, snapshot = require_index(session, repository_id)
     files, _, reverse_files, unresolved_imports = file_graph(session, repository_id)
     symbols = {symbol.id: symbol for symbol in session.scalars(select(Symbol).where(Symbol.file_id.in_(files)))}
     if not set(file_ids) <= files.keys() or not set(symbol_ids) <= symbols.keys():
         raise LookupError("A selected file or symbol is not in this repository.")
     seed_files = set(file_ids) | {symbols[symbol_id].file_id for symbol_id in symbol_ids}
-    seed_symbols = set(symbol_ids) | {symbol.id for symbol in symbols.values() if symbol.file_id in file_ids}
+    seed_symbols = set(symbol_ids) | {symbol.id for symbol in symbols.values() if seed_all_file_symbols and symbol.file_id in file_ids}
     # A changed class/definition can affect its nested definitions.
     children = defaultdict(set)
     for edge in session.scalars(select(Relationship).where(Relationship.repository_id == repository_id,

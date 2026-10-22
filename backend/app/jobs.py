@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import select, update
 
 from .ingestion import IngestionError, ingest_repository
-from .models import IndexJob, Repository, IndexChanges, JobChanges
+from .models import IndexJob, Repository, IndexChanges, JobChanges, JobTarget
 from .parsing import ParsingError, parse_repository
 
 ACTIVE_STATUSES = ("queued", "running")
@@ -37,13 +37,16 @@ class IndexWorker:
                 error="The API restarted before indexing finished. Start indexing again."))
             session.commit()
 
-    def submit(self, repository_id):
+    def submit(self, repository_id, commit_sha=None):
         if not self.lock.acquire(blocking=False):
             with self.sessions() as session:
                 existing = session.scalar(select(IndexJob).where(
                     IndexJob.repository_id == repository_id, IndexJob.status.in_(ACTIVE_STATUSES))
                     .order_by(IndexJob.created_at.desc()).limit(1))
                 if existing:
+                    target = session.get(JobTarget, existing.id)
+                    if (target.commit_sha if target else None) != commit_sha:
+                        raise IndexingBusy("A different revision is already indexing. Wait for it to finish.")
                     return existing
             raise IndexingBusy("Another ingestion or indexing job is running. Try again when it finishes.")
         job = None
@@ -52,6 +55,9 @@ class IndexWorker:
                 job = IndexJob(id=str(uuid.uuid4()), repository_id=repository_id,
                     status="queued", stage="queued", created_at=now())
                 session.add(job)
+                session.flush()
+                if commit_sha:
+                    session.add(JobTarget(job_id=job.id, commit_sha=commit_sha))
                 session.commit()
             self.executor.submit(self.run, job.id)
             return job
@@ -81,7 +87,9 @@ class IndexWorker:
             with self.sessions() as session:
                 job = session.get(IndexJob, job_id)
                 repository = session.get(Repository, job.repository_id)
-                snapshot = ingest_repository(session, repository)
+                target = session.get(JobTarget, job_id)
+                snapshot = (ingest_repository(session, repository, commit_sha=target.commit_sha)
+                            if target else ingest_repository(session, repository))
                 changes = session.get(IndexChanges, repository.id)
                 session.add(JobChanges(job_id=job_id, **{field: getattr(changes, field) for field in CHANGE_FIELDS}))
                 job.stage, job.commit_sha = "parsing", snapshot.commit_sha

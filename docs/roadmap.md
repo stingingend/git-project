@@ -23,7 +23,7 @@ Each milestone should work on its own and include a focused check.
 | 16 — complete | Add semantic symbol search | Local embeddings, storage, and ranked retrieval |
 | 17 — complete | Answer questions with source citations | Retrieval, graph context, and optional generation |
 | 18 — complete | Analyze change impact | Reverse dependencies and affected definitions |
-| 19 | Analyze public pull requests | Changed lines, impacted symbols, and signed webhooks |
+| 19 — complete | Analyze public pull requests | Changed lines, impacted symbols, and signed webhooks |
 | 20 — complete | Measure architecture | Cycles, fan-in/out, centrality, and coupling |
 | 21 | Benchmark and prepare deployment | Measured performance, operational checks, and release docs |
 
