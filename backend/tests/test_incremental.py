@@ -59,7 +59,7 @@ def verify_diff(client, git_repository):
     (git_repository / "src/empty.py").unlink()
     (git_repository / "new.py").write_text("def added(): return 3\n")
     commit(git_repository, "change inventory")
-    with patch("app.parsing.parse_python", wraps=parsing.parse_python) as parse:
+    with patch("app.parsing.parse_source", wraps=parsing.parse_source) as parse:
         result = index(client, prefix)
         assert sorted(call.args[1] for call in parse.call_args_list) == ["new.py", "src/bom.py"]
     after = saved(client)
@@ -82,7 +82,7 @@ def test_non_python_commit_reuses_all_and_publishes_new_sha(client, local_clone,
     before = saved(client)
     (git_repository / "README.md").write_text("Updated documentation")
     commit(git_repository, "docs only")
-    with patch("app.parsing.parse_python", side_effect=AssertionError("Unchanged source parsed")):
+    with patch("app.parsing.parse_source", side_effect=AssertionError("Unchanged source parsed")):
         latest = index(client, prefix)
     assert latest["commit_sha"] != first["commit_sha"]
     assert saved(client) == before
@@ -100,13 +100,13 @@ def test_unchanged_importer_relinks_when_module_added_and_removed(client, local_
     assert client.get(url).json()["items"][0]["resolution"] == "unresolved"
     (git_repository / "src/helper.py").write_text("def help(): return 1\n")
     commit(git_repository, "add target")
-    with patch("app.parsing.parse_python", wraps=parsing.parse_python) as parse:
+    with patch("app.parsing.parse_source", wraps=parsing.parse_source) as parse:
         index(client, prefix)
         assert [call.args[1] for call in parse.call_args_list] == ["src/helper.py"]
     assert client.get(url).json()["items"][0]["resolution"] == "local"
     (git_repository / "src/helper.py").unlink()
     commit(git_repository, "remove target")
-    with patch("app.parsing.parse_python", side_effect=AssertionError("Unchanged source parsed")):
+    with patch("app.parsing.parse_source", side_effect=AssertionError("Unchanged source parsed")):
         index(client, prefix)
     assert client.get(url).json()["items"][0]["resolution"] == "unresolved"
     assert saved(client)["src/app.py"] == before
@@ -122,14 +122,14 @@ def test_exact_scopes_survive_cache_and_version_change_forces_parse(client, inge
     before = saved(client)
     url = prefix + f"/files/{before['app.py'][0]}/relationships?kind=contains"
     edges = client.get(url).json()["items"]
-    with patch("app.parsing.parse_python", side_effect=AssertionError("Cached source parsed")):
+    with patch("app.parsing.parse_source", side_effect=AssertionError("Cached source parsed")):
         assert client.post(prefix + "/parse").status_code == 200
     after_edges = client.get(url).json()["items"]
     assert [(edge["source_symbol_id"], edge["target_symbol_id"]) for edge in after_edges] == [
         (edge["source_symbol_id"], edge["target_symbol_id"]) for edge in edges]
     assert saved(client) == before
     monkeypatch.setattr(parsing, "INDEX_FORMAT_VERSION", "next-version")
-    with patch("app.parsing.parse_python", wraps=parsing.parse_python) as parse:
+    with patch("app.parsing.parse_source", wraps=parsing.parse_source) as parse:
         assert client.post(prefix + "/parse").status_code == 200
         assert parse.call_count == 2
 
@@ -142,7 +142,7 @@ def test_missing_or_corrupt_cache_is_rebuilt(client, ingested_repository):
         session.delete(states[0])  # Upgrade from an older installation.
         states[1].structure = json.dumps(dict(symbols=[], parents=[999]))
         session.commit()
-    with patch("app.parsing.parse_python", wraps=parsing.parse_python) as parse:
+    with patch("app.parsing.parse_source", wraps=parsing.parse_source) as parse:
         assert client.post(prefix + "/parse").status_code == 200
         assert parse.call_count == 2
 

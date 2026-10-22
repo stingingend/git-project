@@ -67,7 +67,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(pr_worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.21.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.22.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -89,7 +89,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             storage=session.get_bind().dialect.name, semantic="local_model2vec",
             generation_configured=bool(os.getenv("CODEATLAS_GENERATION_URL") and os.getenv("CODEATLAS_GENERATION_MODEL")),
             webhooks_configured=len(os.getenv("CODEATLAS_WEBHOOK_SECRET", "")) >= 16,
-            repositories="public_python", worker_mode="single_api_process")
+            repositories="public", languages=["Python", "JavaScript", "TypeScript"], worker_mode="single_api_process")
 
     @application.post("/repositories", response_model=RepositoryRead, status_code=201,
                       summary="Register a GitHub repository URL (step 1)")
@@ -116,7 +116,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return repository
 
     @application.post("/repositories/{repository_id}/ingest", response_model=SnapshotRead,
-                      summary="Download Python source for a registered repository (step 2)")
+                      summary="Download supported source for a registered repository (step 2)")
     def ingest(repository_id: int, session: Session = Depends(get_session)):
         repository = session.get(Repository, repository_id)
         if repository is None:
@@ -184,7 +184,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @application.get("/repositories/{repository_id}/symbols", response_model=list[SymbolRead])
     def list_symbols(repository_id: int, file_id: int | None = None,
-                     kind: Literal["function", "class", "method", "import"] | None = None,
+                     kind: Literal["function", "class", "method", "import", "interface", "type"] | None = None,
                      limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0),
                      session: Session = Depends(get_session)):
         if session.get(Repository, repository_id) is None:
@@ -226,7 +226,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @application.get("/repositories/{repository_id}/search", response_model=SymbolSearchRead,
                      summary="Search saved symbol names, scopes, signatures, and file paths")
     def search(repository_id: int, q: str = Query(min_length=1, max_length=200),
-               kind: Literal["function", "class", "method", "import"] | None = None,
+               kind: Literal["function", "class", "method", "import", "interface", "type"] | None = None,
                limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0),
                session: Session = Depends(get_index_session)):
         query = q.strip()
@@ -251,7 +251,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @application.get("/repositories/{repository_id}/files/{file_id}/graph",
                      response_model=DependencyGraphRead,
-                     summary="Inspect up to 12 directly connected local Python files")
+                     summary="Inspect up to 12 directly connected local source files")
     def graph(repository_id: int, file_id: int, session: Session = Depends(get_index_session)):
         result = dependency_graph(session, repository_id, file_id)
         if result is None:

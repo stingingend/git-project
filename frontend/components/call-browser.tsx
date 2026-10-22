@@ -7,8 +7,9 @@ import type { CallPage, SymbolRecord } from "../lib/types";
 
 const api = createApi();
 
-export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, busy, selectSymbol }: {
+export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, language, busy, selectSymbol }: {
   repositoryId: number; fileId: number; commitSha: string; githubUrl: string;
+  language: string;
   busy: boolean; selectSymbol: (symbol: SymbolRecord) => void;
 }) {
   const [page, setPage] = useState<CallPage | null>(null);
@@ -31,7 +32,9 @@ export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, busy, 
   return <>
     <div className="call-intro">
       <strong>Call sites <span>Approximate analysis</span></strong>
-      <p>Possible targets use lexical scope, explicit imports, and self/cls methods. Aliases, assignments, parameters, and runtime behavior can change the actual target.</p>
+      <p>{language === "Python"
+        ? "Possible targets use lexical scope, explicit imports, and self/cls methods. Aliases, assignments, parameters, and runtime behavior can change the actual target."
+        : "Possible targets use same-file lexical scope and direct this.method calls. Imported calls, arbitrary receiver types, and runtime rebinding remain unresolved."}</p>
       <label>Show <select aria-label="Filter call resolution" value={resolution} disabled={busy}
         onChange={event => { setResolution(event.target.value); setOffset(0); }}>
         <option value="">All calls</option><option value="candidate">Possible targets</option>

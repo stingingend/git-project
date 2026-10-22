@@ -1,13 +1,15 @@
-"""Static containment and conservative Python module dependencies; no execution."""
+"""Static containment and conservative language-aware dependencies; no execution."""
 import ast
 from collections import defaultdict
 from pathlib import PurePosixPath
+import posixpath
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased
 
 from .models import Relationship, RelationshipSnapshot, SourceFile, Symbol
 from .parser import ParsingError
+from .languages import language_for_path, SCRIPT_EXTENSIONS
 
 
 def module_name(path):
@@ -42,13 +44,38 @@ def import_modules(statement, path):
              if base and base != "__future__" else []) for item in node.names]
 
 
+def script_target(path, specifier, files_by_path):
+    """Resolve relative source files only; never read configs or run Node."""
+    if not specifier.startswith(("./", "../")) or "\\" in specifier:
+        return None, "unresolved"
+    base = posixpath.normpath(posixpath.join(posixpath.dirname(path), specifier))
+    if base == ".." or base.startswith("../") or base.startswith("/"):
+        return None, "unresolved"
+    suffix = PurePosixPath(base).suffix.lower()
+    tiers = [[base]] if suffix in SCRIPT_EXTENSIONS else []
+    if suffix not in SCRIPT_EXTENSIONS:
+        tiers.extend([[base + extension for extension in SCRIPT_EXTENSIONS],
+                      [posixpath.join(base, "index" + extension) for extension in SCRIPT_EXTENSIONS]])
+    elif suffix in {".js", ".jsx", ".mjs", ".cjs"}:
+        substitutes = {".js": (".ts", ".tsx"), ".jsx": (".tsx",), ".mjs": (".mts",), ".cjs": (".cts",)}
+        tiers.append([base[:-len(suffix)] + extension for extension in substitutes[suffix]])
+    for tier in tiers:
+        matches = {files_by_path[candidate] for candidate in tier if candidate in files_by_path}
+        if matches:
+            return (next(iter(matches)), "local") if len(matches) == 1 else (None, "ambiguous")
+    return None, "unresolved"
+
+
 def build_relationships(session, repository_id, commit_sha, files, parsed_files):
     modules = defaultdict(set)
     for file in files:
+        if language_for_path(file.path) != "Python":
+            continue
         parts = module_name(file.path)
         if parts and all(part.isidentifier() for part in parts):
             modules[".".join(parts)].add(file.id)
     edges = []
+    script_files = {file.path: file.id for file in files if language_for_path(file.path) in {"JavaScript", "TypeScript"}}
     for file, parents, symbols in parsed_files:
         for index, symbol in enumerate(symbols):
             parent = parents[index]
@@ -59,6 +86,16 @@ def build_relationships(session, repository_id, commit_sha, files, parsed_files)
             if len(edges) > 300_000:
                 raise ParsingError("Repository exceeds the 300,000 relationship limit.")
             if symbol.symbol_type != "import":
+                continue
+            if language_for_path(file.path) != "Python":
+                from .script_parser import script_modules
+                for specifier in script_modules(symbol.signature, file.path):
+                    target, resolution = script_target(file.path, specifier, script_files)
+                    edges.append(Relationship(repository_id=repository_id, file_id=file.id,
+                        kind="imports", source_symbol_id=symbol.id, target_symbol_id=None,
+                        target_file_id=target, label=specifier, resolution=resolution))
+                    if len(edges) > 300_000:
+                        raise ParsingError("Repository exceeds the 300,000 relationship limit.")
                 continue
             for label, candidates in import_modules(symbol.signature, file.path):
                 target = None

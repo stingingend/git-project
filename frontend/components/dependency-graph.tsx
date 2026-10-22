@@ -49,7 +49,7 @@ export function DependencyGraph({ repositoryId, fileId, filePath, commitSha, bus
   return <section className="dependency-graph" aria-label="File dependency graph" aria-busy={busy || loading}>
     <div className="graph-heading">
       <div><span className="graph-icon"><Network size={20} /></span><div>
-        <h3>Explore the connections</h3><p>One file. Its direct Python dependencies.</p>
+        <h3>Explore the connections</h3><p>One file. Its direct source dependencies.</p>
       </div></div>
       <button className="secondary" disabled={busy || loading} onClick={() => setAttempt(attempt + 1)}>
         <RefreshCw size={13} /> Reload graph

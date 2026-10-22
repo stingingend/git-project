@@ -109,11 +109,13 @@ export function SymbolSearch({
           }}
         >
           <option value="">All symbol types</option>
-          {["function", "class", "method", "import"].map((type) => (
-            <option key={type} value={type}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </option>
-          ))}
+          {["function", "class", "method", "import", "interface", "type"].map(
+            (type) => (
+              <option key={type} value={type}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </option>
+            ),
+          )}
         </select>
       </div>
       <div className="search-status" aria-live="polite">

@@ -206,7 +206,7 @@ export default function LandingPage() {
           </div>
           <div className="hero-notes">
             <span>
-              <ShieldCheck size={14} /> Public Python repositories
+              <ShieldCheck size={14} /> Python · JavaScript · TypeScript
             </span>
             <span>
               <Braces size={14} /> Source-backed insights
@@ -255,7 +255,7 @@ export default function LandingPage() {
             {[
               [
                 "Connect",
-                "Paste a public GitHub repository URL. CodeAtlas collects its Python source without running it.",
+                "Paste a public GitHub repository URL. CodeAtlas collects its supported source without running it.",
               ],
               [
                 "Map",
@@ -286,7 +286,7 @@ export default function LandingPage() {
           <Link className="landing-primary" href="/workspace">
             Open your workspace <ArrowRight size={17} />
           </Link>
-          <p>A personal workspace for exploring public Python code.</p>
+          <p>A personal workspace for exploring public repositories.</p>
         </section>
       </main>
       <footer className="site-footer">

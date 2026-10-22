@@ -9,14 +9,14 @@ from sqlalchemy.orm import Session
 from .models import (FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile,
                      Symbol, Relationship, RelationshipSnapshot, CallSite, CallSnapshot,
                      FileIndexState, IndexChanges, CallOrigin, SearchDocument, SemanticSnapshot)
-from .parser import ParsingError, parse_python
+from .parser import ParsingError, parse_source
 from .relationships import build_relationships
 from .calls import build_calls, resolve_repository_calls
 
 MAX_SYMBOLS = 100_000
 MAX_CALLS = 100_000
 # Bump whenever extraction, scope serialization, or call matching changes.
-INDEX_FORMAT_VERSION = "2"
+INDEX_FORMAT_VERSION = "3"
 
 
 def invalidate_snapshot(session: Session, repository_id: int) -> None:
@@ -100,7 +100,7 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
         raise ParsingError("Repository exceeds the symbol or call limit.")
     parsed_files = []
     for file in dirty:
-        result = parse_python(file.source, file.path, max_symbols=MAX_SYMBOLS - symbol_count,
+        result = parse_source(file.source, file.path, max_symbols=MAX_SYMBOLS - symbol_count,
                               max_calls=MAX_CALLS - call_count)
         symbols = [Symbol(file_id=file.id, **vars(symbol)) for symbol in result.symbols]
         symbol_count += len(symbols)

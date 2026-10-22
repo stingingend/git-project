@@ -21,7 +21,9 @@ def repository_overview(session: Session, repository_id: int) -> dict | None:
     if row is None:
         return None
     repository, snapshot, parsing = row
-    return {"repository": repository, "snapshot": snapshot, "parsing": parsing}
+    languages = dict(session.execute(select(SourceFile.language, func.count())
+        .where(SourceFile.repository_id == repository_id).group_by(SourceFile.language)).all())
+    return {"repository": repository, "snapshot": snapshot, "parsing": parsing, "languages": languages}
 
 
 def file_detail(session: Session, repository_id: int, file_id: int, limit: int, offset: int) -> dict | None:

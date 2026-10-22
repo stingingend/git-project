@@ -2,10 +2,9 @@
 from collections import defaultdict, deque
 
 from sqlalchemy import select
-from tree_sitter import Parser
 
 from .models import CallSite, ParseSnapshot, Relationship, SourceFile, Symbol
-from .parser import PYTHON
+from .languages import language_parser
 from .schemas import SymbolRead
 from .semantic import require_index
 
@@ -97,13 +96,15 @@ def impact(session, repository_id, file_ids=(), symbol_ids=(), max_depth=6, limi
         symbols=[dict(symbol=SymbolRead.model_validate(symbols[symbol_id]).model_dump(),
                       path=files[symbols[symbol_id].file_id].path, depth=symbol_depth[symbol_id],
                       via_symbol_id=symbol_via.get(symbol_id)) for symbol_id in affected_symbols[:limit]],
-        limitations=["Only indexed Python source and resolved import/call candidates are followed.",
+        limitations=["Only indexed source and resolved import/call candidates are followed.",
+                     "JavaScript/TypeScript calls are same-file candidates; imported calls and module aliases remain unresolved.",
                      "Dynamic dispatch, external consumers, and missing/ambiguous targets may hide impact."])
 
 
 def is_test_file(path):
     parts = path.split("/")
-    return "tests" in parts or parts[-1].startswith("test_") or parts[-1].endswith("_test.py")
+    return ("tests" in parts or "__tests__" in parts or parts[-1].startswith("test_")
+            or parts[-1].endswith("_test.py") or any(marker in parts[-1] for marker in (".test.", ".spec.")))
 
 
 def strongly_connected(forward, reverse):
@@ -159,14 +160,19 @@ def architecture(session, repository_id):
     centrality = pagerank(forward, reverse)
     rows = []
     for file_id, file in files.items():
-        tree = Parser(PYTHON).parse(file.source.encode("utf-8"))
+        content = file.source.encode("utf-8")
+        tree = language_parser(file.path).parse(content)
         branches = None if tree.root_node.has_error else 0
         if branches is not None:
             stack = [tree.root_node]
             while stack:
                 node = stack.pop()
                 branches += node.type in {"if_statement", "for_statement", "while_statement", "except_clause",
-                                          "boolean_operator", "conditional_expression", "case_clause"}
+                                          "boolean_operator", "conditional_expression", "case_clause",
+                                          "for_in_statement", "do_statement", "catch_clause", "switch_case", "ternary_expression"}
+                if node.type == "binary_expression":
+                    operator = node.child_by_field_name("operator")
+                    branches += operator is not None and content[operator.start_byte:operator.end_byte] in {b"&&", b"||", b"??"}
                 stack.extend(node.named_children)
         coupling = len(reverse[file_id]) + len(forward[file_id])
         rows.append(dict(file_id=file_id, path=file.path, fan_in=len(reverse[file_id]), fan_out=len(forward[file_id]),

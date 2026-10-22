@@ -17,7 +17,7 @@ def test_registered_overview_marks_unavailable_stages(client):
     repository = client.post("/repositories", json={"github_url": "https://github.com/example/empty"}).json()
     response = client.get(f"/repositories/{repository['id']}/overview")
     assert response.status_code == 200
-    assert response.json() == {"repository": repository, "snapshot": None, "parsing": None}
+    assert response.json() == {"repository": repository, "snapshot": None, "parsing": None, "languages": {}}
     assert client.get("/repositories/999/overview").status_code == 404
 
 

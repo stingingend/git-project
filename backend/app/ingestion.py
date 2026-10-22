@@ -17,10 +17,12 @@ from sqlalchemy.orm import Session
 from .models import Repository, RepositorySnapshot, SourceFile, IndexChanges
 from .parsing import clear_file_results, invalidate_snapshot
 from .schemas import RepositoryCreate
+from .languages import language_for_path
 
 IGNORED_DIRECTORIES = {
     ".git", "node_modules", "dist", "build", "vendor", "venv", ".venv",
     "__pycache__", "coverage", ".tox", ".mypy_cache", ".pytest_cache",
+    ".next", ".nuxt", ".output", "out", ".turbo",
 }
 
 
@@ -148,7 +150,7 @@ class DiscoveredFile:
     line_count: int
 
 
-def discover_python_files(path: Path, limits: Limits = Limits()) -> tuple[list[DiscoveredFile], int]:
+def discover_source_files(path: Path, limits: Limits = Limits()) -> tuple[list[DiscoveredFile], int]:
     entries = read_git(path, "ls-tree", "--full-tree", "-rlz", "HEAD").split(b"\0")
     if len(entries) - 1 > limits.max_tracked_files:
         raise IngestionError("Repository exceeds the tracked file limit.")
@@ -160,7 +162,7 @@ def discover_python_files(path: Path, limits: Limits = Limits()) -> tuple[list[D
         if not entry:
             continue
         metadata, raw_path = entry.split(b"\t", 1)
-        if not raw_path.endswith(b".py"):
+        if not language_for_path(raw_path.decode("utf-8", errors="replace")):
             continue
         mode, kind, blob_sha, size = metadata.split()
         try:
@@ -178,7 +180,7 @@ def discover_python_files(path: Path, limits: Limits = Limits()) -> tuple[list[D
         eligible_files += 1
         total_bytes += int(size)
         if eligible_files > limits.max_files or total_bytes > limits.source_bytes:
-            raise IngestionError("Repository exceeds the Python file count or source size limit.")
+            raise IngestionError("Repository exceeds the supported-source file count or source size limit.")
         content = read_git(path, "cat-file", "blob", blob_sha.decode("ascii"))
         try:
             source = content.decode("utf-8-sig")
@@ -193,7 +195,7 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
                       commit_sha: str | None = None) -> RepositorySnapshot:
     clone = clone_repository(repository.github_url, limits, commit_sha) if commit_sha else clone_repository(repository.github_url, limits)
     with clone as path:
-        files, skipped = discover_python_files(path, limits)
+        files, skipped = discover_source_files(path, limits)
         sha = read_git(path, "rev-parse", "HEAD").decode("ascii").strip()
         branch = "commit" if commit_sha else read_git(path, "symbolic-ref", "--short", "HEAD").decode("utf-8").strip()
 
@@ -212,6 +214,9 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
     for path in changed:
         saved, fresh = existing[path], discovered[path]
         saved.source, saved.content_hash, saved.line_count = fresh.source, fresh.content_hash, fresh.line_count
+        saved.language = language_for_path(path)
+    for path in (set(existing) & set(discovered)) - changed:
+        existing[path].language = language_for_path(path)
     changes = session.get(IndexChanges, repository.id)
     if changes is None:
         changes = IndexChanges(repository_id=repository.id)
@@ -230,7 +235,7 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
     snapshot.skipped_files = skipped
     snapshot.line_count = sum(file.line_count for file in files)
     session.add_all([
-        SourceFile(repository_id=repository.id, path=file.path, source=file.source,
+        SourceFile(repository_id=repository.id, path=file.path, language=language_for_path(file.path), source=file.source,
                    content_hash=file.content_hash, line_count=file.line_count)
         for file in files if file.path in added
     ])

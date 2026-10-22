@@ -130,7 +130,7 @@ export function SourceViewer({
         </div>
       )}
       {tab === "calls" ? <CallBrowser repositoryId={repositoryId} fileId={detail.file.id}
-        commitSha={detail.commit_sha} githubUrl={detail.github_url} busy={busy} selectSymbol={selectSymbol} /> : tab === "source" ? (
+        commitSha={detail.commit_sha} githubUrl={detail.github_url} language={detail.file.language} busy={busy} selectSymbol={selectSymbol} /> : tab === "source" ? (
         <>
           <div
             ref={panel}
@@ -171,7 +171,7 @@ export function SourceViewer({
           </div>
           <div className="viewer-footer">
             <span>
-              Python · UTF-8 <span className="footer-separator">/</span>{" "}
+              {detail.file.language} · UTF-8 <span className="footer-separator">/</span>{" "}
               {lines.length.toLocaleString()} lines
             </span>
             <div>

@@ -7,6 +7,7 @@ export type Repository = {
   created_at: string;
 };
 export type Overview = {
+  languages?: Record<string, number>;
   repository: Repository;
   snapshot: null | {
     commit_sha: string;

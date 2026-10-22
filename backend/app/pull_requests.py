@@ -97,7 +97,8 @@ def analyze_pull_request(session, repository_id, payload):
         old_path = str(item.get("previous_filename", path))[:4096]
         file = files.get(old_path)
         patch = item.get("patch")
-        relevant = path.endswith(".py") or old_path.endswith(".py")
+        from .languages import language_for_path
+        relevant = bool(language_for_path(path) or language_for_path(old_path))
         available = isinstance(patch, str) and len(patch) <= 1_000_000
         matched = []
         if comparable and file is not None and relevant:

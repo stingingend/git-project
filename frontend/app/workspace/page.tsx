@@ -54,7 +54,7 @@ const stages: Stage[] = ["registering", "queued", "ingesting", "parsing"];
 const stageLabels = [
   "Connect repository",
   "Schedule job",
-  "Collect Python source",
+  "Collect source files",
   "Extract symbols",
 ];
 const number = (value: number | undefined) =>
@@ -70,6 +70,7 @@ export default function Home() {
   const [selection, setSelection] = useState<SourceSelection | null>(null);
   const [url, setUrl] = useState("");
   const [filter, setFilter] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("");
   const [visibleFiles, setVisibleFiles] = useState(100);
   const [initialLoading, setInitialLoading] = useState(true);
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -186,6 +187,7 @@ export default function Home() {
     setSelection(null);
     setActiveFile(null);
     setFilter("");
+    setLanguageFilter("");
     setVisibleFiles(100);
     setFileLoading(false);
     if (selectedId === null) return;
@@ -335,6 +337,7 @@ export default function Home() {
         request,
       });
       setFilter("");
+      setLanguageFilter("");
     } catch (e) {
       if (request === fileRequest.current) setError((e as Error).message);
     } finally {
@@ -342,8 +345,11 @@ export default function Home() {
     }
   }
 
-  const filtered = files.filter((file) =>
-    file.path.toLowerCase().includes(filter.toLowerCase()),
+  const languages = [...new Set(files.map((file) => file.language))].sort();
+  const filtered = files.filter(
+    (file) =>
+      file.path.toLowerCase().includes(filter.toLowerCase()) &&
+      (!languageFilter || file.language === languageFilter),
   );
   const step =
     stage === "complete" ? stages.length : stage ? stages.indexOf(stage) : -1;
@@ -419,7 +425,7 @@ export default function Home() {
             <Braces size={17} />
           </span>
           <div>
-            Powered by structure<small>Python · Tree-sitter</small>
+            Powered by structure<small>Python / JS / TS · Tree-sitter</small>
           </div>
         </div>
       </aside>
@@ -454,8 +460,8 @@ export default function Home() {
               <div>
                 <h2 id="connect-title">Bring your repository into focus</h2>
                 <p>
-                  Connect a public GitHub repository to explore its Python
-                  source.
+                  Connect a public GitHub repository to explore its Python,
+                  JavaScript, and TypeScript source.
                 </p>
               </div>
             </div>
@@ -494,7 +500,7 @@ export default function Home() {
             <div className="connect-foot">
               <span>
                 <CircleDot size={11} />
-                Public repos · Python source · No API keys
+                Public repos · Python / JS / TS · No API keys
               </span>
               <button
                 disabled={busy}
@@ -527,7 +533,7 @@ export default function Home() {
                       : stage === "queued"
                         ? "Indexing job scheduled"
                         : stage === "ingesting"
-                          ? "Collecting Python source"
+                          ? "Collecting source files"
                           : "Extracting symbols"}
                 </strong>
                 <span>
@@ -681,7 +687,7 @@ export default function Home() {
               <div className="statistics">
                 {[
                   {
-                    label: "Python files",
+                    label: "Source files",
                     value: overview.snapshot?.file_count,
                     caption: overview.snapshot
                       ? `${number(overview.snapshot.line_count)} lines of source`
@@ -727,7 +733,7 @@ export default function Home() {
               </div>
               {!!overview.snapshot?.skipped_files && (
                 <div className="notice">
-                  {overview.snapshot.skipped_files} Python files skipped because
+                  {overview.snapshot.skipped_files} source files skipped because
                   of exclusions, symlinks, size limits, or unsupported encoding.
                 </div>
               )}
@@ -806,7 +812,30 @@ export default function Home() {
                       }}
                     />
                   </div>
-                  <div className="tree-label">PYTHON SOURCE</div>
+                  <div className="language-controls">
+                    <label htmlFor="file-language">Language</label>
+                    <select
+                      id="file-language"
+                      value={languageFilter}
+                      onChange={(event) => {
+                        setLanguageFilter(event.target.value);
+                        setVisibleFiles(100);
+                      }}
+                    >
+                      <option value="">All languages ({files.length})</option>
+                      {languages.map((language) => (
+                        <option key={language} value={language}>
+                          {language} (
+                          {
+                            files.filter((file) => file.language === language)
+                              .length
+                          }
+                          )
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="tree-label">SOURCE FILES</div>
                   <div className="file-list">
                     {filtered.slice(0, visibleFiles).map((file) => (
                       <button
@@ -836,10 +865,10 @@ export default function Home() {
                     )}
                     {!filtered.length && (
                       <p className="file-empty">
-                        {filter
+                        {filter || languageFilter
                           ? "No matching files."
                           : overview.snapshot
-                            ? "No supported Python files in this snapshot."
+                            ? "No supported source files in this snapshot."
                             : "Run indexing to collect source files."}
                       </p>
                     )}
@@ -963,7 +992,7 @@ export default function Home() {
                 <span>Let’s make yours visible.</span>
               </h2>
               <p>
-                Index a repository to discover its Python files, inspect real
+                Index a repository to discover its source files, inspect real
                 definitions,
                 <br className="desktop-break" /> and read the source behind
                 them.

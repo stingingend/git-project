@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app import ingestion
-from app.ingestion import IngestionError, Limits, clone_repository, discover_python_files
+from app.ingestion import IngestionError, Limits, clone_repository, discover_source_files
 from app.main import create_app
 from app.models import SourceFile
 
@@ -54,7 +54,7 @@ def register(client):
 
 
 def test_discovery_excludes_vendor_symlinks_and_unsupported_encodings(git_repository):
-    files, skipped = discover_python_files(git_repository)
+    files, skipped = discover_source_files(git_repository)
     assert [file.path for file in files] == ["src/app.py", "src/bom.py", "src/empty.py"]
     assert skipped == 3
     assert files[0].line_count == 1
@@ -66,11 +66,11 @@ def test_discovery_excludes_vendor_symlinks_and_unsupported_encodings(git_reposi
 @pytest.mark.parametrize("limits", [Limits(max_files=1), Limits(source_bytes=1), Limits(max_tracked_files=1)])
 def test_discovery_rejects_repository_limits(git_repository, limits):
     with pytest.raises(IngestionError, match="limit"):
-        discover_python_files(git_repository, limits)
+        discover_source_files(git_repository, limits)
 
 
 def test_oversized_individual_files_are_skipped(git_repository):
-    files, skipped = discover_python_files(git_repository, Limits(file_bytes=1))
+    files, skipped = discover_source_files(git_repository, Limits(file_bytes=1))
     assert [file.path for file in files] == ["src/empty.py"]
     assert skipped == 5
 

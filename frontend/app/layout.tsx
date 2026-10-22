@@ -5,7 +5,7 @@ import "./theme.css";
 export const metadata: Metadata = {
   title: "CodeAtlas — Find your way through the code",
   description:
-    "Turn a public GitHub repository into a connected map of Python code. Explore dependencies, search symbols, and investigate changes with source-backed insights.",
+    "Turn a public GitHub repository into a connected map of Python, JavaScript, and TypeScript code. Explore dependencies, search symbols, and investigate changes with source-backed insights.",
   openGraph: {
     title: "CodeAtlas — Less searching. More understanding.",
     description:

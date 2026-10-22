@@ -8,12 +8,13 @@ from sqlalchemy.orm import aliased
 
 from .models import CallSite, CallSnapshot, FileParse, SourceFile, Symbol, CallOrigin
 from .relationships import module_name
+from .languages import language_for_path
 
 
 def match_calls(result):
     definitions = defaultdict(list)
     for index, symbol in enumerate(result.symbols):
-        if symbol.symbol_type != "import":
+        if symbol.symbol_type in {"function", "class", "method"}:
             definitions[(result.parents[index], symbol.name)].append(index)
     cache = {}
     for call in result.calls:
@@ -60,14 +61,16 @@ def resolve_repository_calls(session, repository_id, files, structure):
     bindings = defaultdict(lambda: defaultdict(list))
     parents_by_id = {}
     for file in files:
-        modules[".".join(module_name(file.path))].append(file.id)
+        if language_for_path(file.path) == "Python":
+            modules[".".join(module_name(file.path))].append(file.id)
+    languages = {file.id: language_for_path(file.path) for file in files}
     for file, parents, symbols in structure:
         for index, symbol in enumerate(symbols):
             parent = symbols[parents[index]] if parents[index] is not None else None
             parents_by_id[symbol.id] = parent
             if symbol.symbol_type in {"function", "class", "method"}:
                 definitions[(file.id, parent.id if parent else None, symbol.name)].append(symbol)
-            if symbol.symbol_type != "import" or parent is not None:
+            if symbol.symbol_type != "import" or parent is not None or languages[file.id] != "Python":
                 continue
             try:
                 node = ast.parse(symbol.signature).body[0]
@@ -95,7 +98,8 @@ def resolve_repository_calls(session, repository_id, files, structure):
             continue
         matches = []
         parts = call.expression.split(".")
-        if len(parts) == 2 and parts[0] in {"self", "cls"}:
+        receivers = {"self", "cls"} if languages[call.file_id] == "Python" else {"this"}
+        if len(parts) == 2 and parts[0] in receivers:
             parent = parents_by_id.get(call.caller_symbol_id)
             if parent is not None and parent.symbol_type == "class":
                 matches.extend(definitions.get((call.file_id, parent.id, parts[1]), []))

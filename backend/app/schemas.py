@@ -116,6 +116,7 @@ class RepositoryOverviewRead(BaseModel):
     repository: RepositoryRead
     snapshot: SnapshotRead | None
     parsing: ParseSnapshotRead | None
+    languages: dict[str, int] = Field(default_factory=dict)
 
 
 class SymbolPageRead(BaseModel):
