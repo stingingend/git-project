@@ -13,6 +13,8 @@ import type {
   IndexJob,
   SemanticResults,
   CitedAnswer,
+  ImpactReport,
+  ArchitectureReport,
 } from "./types";
 
 export class ApiError extends Error {
@@ -59,6 +61,10 @@ export function createApi(fetcher: typeof fetch = fetch) {
     return body as T;
   }
   return {
+    impact: (id: number, fileIds: number[], symbolIds: number[] = []) => request<ImpactReport>(`/repositories/${id}/impact`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({file_ids: fileIds, symbol_ids: symbolIds}),
+    }),
+    architecture: (id: number) => request<ArchitectureReport>(`/repositories/${id}/architecture`),
     ask: (id: number, question: string, generate: boolean) => request<CitedAnswer>(`/repositories/${id}/questions`, {
       method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({question, generate}),
     }),

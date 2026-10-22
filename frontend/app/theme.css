@@ -325,3 +325,20 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
 .intelligence-tabs { display: flex; gap: 8px; margin: 14px 0; }
 .intelligence-tabs button[aria-pressed="true"] { background: #e5edff; border-color: #9bb5ef; }
 .cited-answer { white-space: pre-wrap; color: #24415f; line-height: 1.9; }
+.analysis-panel > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; cursor: pointer; font-weight: 600; color: #24415f; }
+.analysis-panel > summary span { margin-left: auto; font-size: 12px; color: #74839b; font-weight: 400; }
+.analysis-panel select { flex: 1; min-width: 180px; max-width: 100%; padding: 10px; color: #24415f; background: #f7f9fc; border: 1px solid #d3deed; border-radius: 8px; }
+.analysis-stats { display: flex; flex-wrap: wrap; gap: 24px; padding: 20px 0; }
+.analysis-stats span { display: flex; align-items: baseline; gap: 8px; color: #64748b; font-size: 12px; }
+.analysis-stats strong { font-size: 22px; color: #23415f; }
+.analysis-list { display: flex; gap: 8px; flex-wrap: wrap; max-height: 300px; overflow: auto; margin: 14px 0; }
+.analysis-list button { flex-direction: column; align-items: flex-start; text-align: left; overflow-wrap: anywhere; }
+.analysis-list small { color: #6a7e98; font-size: 11px; }
+.analysis-table-wrap { overflow: auto; max-height: 420px; margin: 16px 0; }
+.analysis-panel table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.analysis-panel caption { text-align: left; font-weight: 600; padding: 12px 0; }
+.analysis-panel th, .analysis-panel td { padding: 9px; border-bottom: 1px solid #e2e9f2; color: #34516d; }
+.analysis-panel th { position: sticky; top: 0; background: #f0f5fb; }
+.analysis-panel td button { padding: 5px 8px; font-size: 11px; text-align: left; white-space: nowrap; }
+.analysis-panel details > summary { cursor: pointer; color: #315ed5; padding: 10px 0; font-size: 13px; }
+.cycle-group { padding: 12px; background: #fff8ed; border: 1px solid #f1ddbd; border-radius: 10px; margin-bottom: 10px; font-size: 12px; }

@@ -22,9 +22,9 @@ Each milestone should work on its own and include a focused check.
 | 15 — complete | Broaden approximate call resolution | Imports, receiver context, and invalidation |
 | 16 — complete | Add semantic symbol search | Local embeddings, storage, and ranked retrieval |
 | 17 — complete | Answer questions with source citations | Retrieval, graph context, and optional generation |
-| 18 | Analyze change impact | Reverse dependencies and affected definitions |
+| 18 — complete | Analyze change impact | Reverse dependencies and affected definitions |
 | 19 | Analyze public pull requests | Changed lines, impacted symbols, and signed webhooks |
-| 20 | Measure architecture | Cycles, fan-in/out, centrality, and coupling |
+| 20 — complete | Measure architecture | Cycles, fan-in/out, centrality, and coupling |
 | 21 | Benchmark and prepare deployment | Measured performance, operational checks, and release docs |
 
 Private repositories, cloud account provisioning, and posting PR comments require account configuration; public read-only PR reports work independently.

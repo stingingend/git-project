@@ -62,7 +62,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.17.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.18.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 

@@ -4,6 +4,7 @@ import logging
 
 from .semantic import (SemanticError, build_semantic_index, semantic_search, semantic_status)
 from .answers import answer_question
+from .analysis import architecture, impact
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,33 @@ class Question(BaseModel):
     generate: bool = False
 
 
+class ImpactRequest(BaseModel):
+    file_ids: list[int] = Field(default_factory=list, max_length=100)
+    symbol_ids: list[int] = Field(default_factory=list, max_length=100)
+    max_depth: int = Field(6, ge=1, le=12)
+    limit: int = Field(100, ge=1, le=200)
+
+
 def install(application, get_session, get_index_session):
+    @application.post("/repositories/{repository_id}/impact")
+    def change_impact(repository_id: int, body: ImpactRequest, session=Depends(get_index_session)):
+        if not body.file_ids and not body.symbol_ids:
+            raise HTTPException(422, "Select at least one file or symbol.")
+        try:
+            return impact(session, repository_id, body.file_ids, body.symbol_ids, body.max_depth, body.limit)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except SemanticError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @application.get("/repositories/{repository_id}/architecture")
+    def architectural_metrics(repository_id: int, session=Depends(get_index_session)):
+        try:
+            return architecture(session, repository_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except SemanticError as exc:
+            raise HTTPException(409, str(exc)) from exc
     @application.post("/repositories/{repository_id}/questions")
     def question(repository_id: int, body: Question, session=Depends(get_index_session)):
         try:

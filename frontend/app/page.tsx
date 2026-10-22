@@ -40,6 +40,7 @@ import { SymbolSearch } from "../components/symbol-search";
 import { Relationships } from "../components/relationships";
 import { DependencyGraph } from "../components/dependency-graph";
 import { IntelligencePanel } from "../components/intelligence-panel";
+import { AnalysisPanel } from "../components/analysis-panel";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "queued", "ingesting", "parsing"];
@@ -379,7 +380,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.17</span>
+            Local development <span className="version">v0.18</span>
           </span>
         </header>
         <div className="content">
@@ -657,6 +658,9 @@ export default function Home() {
                   if (hit.symbol) void openSymbol({symbol: hit.symbol, path: hit.path, has_parse_errors: false}, commit);
                   else if (commit === overview.snapshot?.commit_sha) void openFile(hit.file_id);
                 }} />
+              {overview.parsing && <AnalysisPanel key={`analysis:${selectedId}:${revision}`} repositoryId={overview.repository.id}
+                commitSha={overview.snapshot?.commit_sha ?? ""} files={files} busy={busy} selectedSymbol={selection?.symbol}
+                selectFile={fileId => void openFile(fileId)} selectSymbol={(hit, commit) => void openSymbol(hit, commit)} />}
               <SymbolSearch
                 key={`${selectedId}:${revision}`}
                 repositoryId={overview.repository.id}

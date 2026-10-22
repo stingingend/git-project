@@ -97,6 +97,21 @@ export type CitedAnswer = {
   citations: {id: number; title: string; path: string; file_id: number; symbol: SymbolRecord | null;
     start_line: number; end_line: number; github_url: string; quote: string; quote_truncated: boolean}[];
 };
+export type ImpactReport = {
+  commit_sha: string; affected_file_count: number; affected_symbol_count: number; scope: string;
+  scope_rule: string; truncated: boolean; unresolved_imports: number; unresolved_calls: number;
+  files: {file_id: number; path: string; depth: number; is_test: boolean}[];
+  symbols: {symbol: SymbolRecord; path: string; depth: number}[]; limitations: string[];
+};
+export type ArchitectureFile = {file_id: number; path: string; fan_in: number; fan_out: number;
+  centrality: number; branch_points: number | null; review_score: number | null};
+export type ArchitectureReport = {
+  commit_sha: string; file_count: number; dependency_pairs: number; isolated_files: number;
+  cycle_component_count: number; cyclic_files: number; unresolved_imports: number; parse_error_files: number;
+  hubs: ArchitectureFile[]; hotspots: ArchitectureFile[]; hotspot_rule: string;
+  cycles: {files: {file_id: number; path: string}[]; size: number; truncated: boolean}[];
+  cycles_truncated: boolean; limitations: string[];
+};
 export type SearchPage = {
   repository_id: number;
   query: string;
