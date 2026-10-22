@@ -71,7 +71,7 @@ export function AnalysisPanel({ repositoryId, commitSha, files, busy, selectedSy
         <details><summary>Coupling and branch hotspots</summary><p className="intelligence-note">{architecture.hotspot_rule}</p>
           <div className="analysis-list">{architecture.hotspots.slice(0, 10).map(file => <button key={file.file_id} onClick={() => selectFile(file.file_id)} disabled={disabled}>
             {file.path}<small>Review score {file.review_score}</small></button>)}</div></details>
-        <p className="intelligence-note">{architecture.unresolved_imports} unresolved imports · {architecture.parse_error_files} files with syntax errors. Partial analysis may omit dependencies.</p>
+        <p className="intelligence-note">{architecture.unresolved_imports} unresolved imports · {architecture.parse_error_files} files requiring parser recovery. Partial analysis may omit dependencies.</p>
       </div>}
     </>}
     {error && <p role="alert" className="intelligence-error">{error}</p>}

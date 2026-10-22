@@ -739,7 +739,7 @@ export default function Home() {
               )}
               {!!overview.parsing?.parse_error_files && (
                 <div className="notice">
-                  {overview.parsing.parse_error_files} files have syntax errors.
+                  {overview.parsing.parse_error_files} files required parser recovery.
                   Recovered symbols may be incomplete.
                 </div>
               )}

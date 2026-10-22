@@ -8,7 +8,7 @@ CodeAtlas indexes Python, JavaScript, and TypeScript in the same repository. Re-
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | Functions, bound arrow/function expressions, classes, methods, imports |
 | TypeScript | `.ts`, `.tsx`, `.mts`, `.cts` | JavaScript definitions plus interfaces and type aliases |
 
-JSX and TSX are parsed with their appropriate grammars. Anonymous default-exported functions/classes use the name `default`. Anonymous inline callbacks are not separate symbols. Arbitrary variables, computed property names, and ambient overload signatures are not a complete type index. Source files remain viewable even when syntax recovery reports errors.
+JSX and TSX are parsed with their appropriate grammars. Anonymous default-exported functions/classes use the name `default`. Anonymous inline callbacks are not separate symbols. Arbitrary variables, computed property names, and ambient overload signatures are not a complete type index. Source files remain viewable even when syntax recovery reports errors. The recovery flag reflects the pinned grammar, not a compiler or type checker: valid syntax outside that grammar can also be flagged (for example, bare ampersands in JSX text with the current TSX grammar).
 
 ## Dependencies and calls
 

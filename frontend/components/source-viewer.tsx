@@ -126,7 +126,7 @@ export function SourceViewer({
       )}
       {detail.parsing?.has_parse_errors && (
         <div className="inline-notice">
-          Syntax errors found. Recovered symbols may be incomplete.
+          Parser recovery used. Symbols may be incomplete; this is not a compiler check.
         </div>
       )}
       {tab === "calls" ? <CallBrowser repositoryId={repositoryId} fileId={detail.file.id}

@@ -160,7 +160,7 @@ export function SymbolSearch({
                   )}
                   <small>
                     {hit.path} · L{hit.symbol.start_line}–{hit.symbol.end_line}
-                    {hit.has_parse_errors && " · Syntax errors"}
+                    {hit.has_parse_errors && " · Parser recovery"}
                   </small>
                 </span>
                 <ArrowRight size={14} />
