@@ -98,6 +98,7 @@ def impact(session, repository_id, file_ids=(), symbol_ids=(), max_depth=6, limi
                       via_symbol_id=symbol_via.get(symbol_id)) for symbol_id in affected_symbols[:limit]],
         limitations=["Only indexed source and resolved import/call candidates are followed.",
                      "JavaScript/TypeScript calls are same-file candidates; imported calls and module aliases remain unresolved.",
+                     "C/C++ includes use conventional source paths, not compiler flags; cross-file calls, macros, and overload dispatch are not resolved.",
                      "Dynamic dispatch, external consumers, and missing/ambiguous targets may hide impact."])
 
 
@@ -161,7 +162,7 @@ def architecture(session, repository_id):
     rows = []
     for file_id, file in files.items():
         content = file.source.encode("utf-8")
-        tree = language_parser(file.path).parse(content)
+        tree = language_parser(file.path, language=file.language).parse(content)
         branches = None if tree.root_node.has_error else 0
         if branches is not None:
             stack = [tree.root_node]
@@ -169,7 +170,8 @@ def architecture(session, repository_id):
                 node = stack.pop()
                 branches += node.type in {"if_statement", "for_statement", "while_statement", "except_clause",
                                           "boolean_operator", "conditional_expression", "case_clause",
-                                          "for_in_statement", "do_statement", "catch_clause", "switch_case", "ternary_expression"}
+                                          "for_in_statement", "do_statement", "catch_clause", "switch_case", "ternary_expression",
+                                          "for_range_loop", "case_statement"}
                 if node.type == "binary_expression":
                     operator = node.child_by_field_name("operator")
                     branches += operator is not None and content[operator.start_byte:operator.end_byte] in {b"&&", b"||", b"??"}

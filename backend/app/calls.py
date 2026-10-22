@@ -11,7 +11,7 @@ from .relationships import module_name
 from .languages import language_for_path
 
 
-def match_calls(result):
+def match_calls(result, language="Python"):
     definitions = defaultdict(list)
     for index, symbol in enumerate(result.symbols):
         if symbol.symbol_type in {"function", "class", "method"}:
@@ -26,7 +26,7 @@ def match_calls(result):
                 while True:
                     # Function bodies do not close over a class namespace.
                     is_class = scope is not None and result.symbols[scope].symbol_type == "class"
-                    if not is_class or scope == call.caller_index:
+                    if language in {"C", "C++"} or not is_class or scope == call.caller_index:
                         matches = definitions.get((scope, call.direct_name), [])
                         if matches:
                             target = matches[0] if len(matches) == 1 else None
@@ -42,7 +42,7 @@ def match_calls(result):
 def build_calls(session, repository_id, parsed_files):
     created = []
     for file, result, symbols in parsed_files:
-        for call, target, resolution in match_calls(result):
+        for call, target, resolution in match_calls(result, file.language):
             created.append(CallSite(repository_id=repository_id, file_id=file.id,
                 caller_symbol_id=symbols[call.caller_index].id if call.caller_index is not None else None,
                 target_symbol_id=symbols[target].id if target is not None else None,
@@ -63,7 +63,7 @@ def resolve_repository_calls(session, repository_id, files, structure):
     for file in files:
         if language_for_path(file.path) == "Python":
             modules[".".join(module_name(file.path))].append(file.id)
-    languages = {file.id: language_for_path(file.path) for file in files}
+    languages = {file.id: file.language for file in files}
     for file, parents, symbols in structure:
         for index, symbol in enumerate(symbols):
             parent = symbols[parents[index]] if parents[index] is not None else None
@@ -98,7 +98,8 @@ def resolve_repository_calls(session, repository_id, files, structure):
             continue
         matches = []
         parts = call.expression.split(".")
-        receivers = {"self", "cls"} if languages[call.file_id] == "Python" else {"this"}
+        receivers = ({"self", "cls"} if languages[call.file_id] == "Python" else
+                     {"this"} if languages[call.file_id] in {"JavaScript", "TypeScript"} else set())
         if len(parts) == 2 and parts[0] in receivers:
             parent = parents_by_id.get(call.caller_symbol_id)
             if parent is not None and parent.symbol_type == "class":

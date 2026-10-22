@@ -146,6 +146,7 @@
   border: 1px solid #dfe1eb;
 }
 .hero-notes {
+  flex-wrap: wrap;
   position: relative;
   display: flex;
   justify-content: center;
@@ -522,6 +523,7 @@
     padding: 0 22px;
   }
   .hero-notes {
+    flex-wrap: wrap;
     font-size: 9px;
     gap: 14px;
   }

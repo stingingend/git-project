@@ -43,13 +43,17 @@ class ParsedFile:
     calls: list[ExtractedCall] = field(default_factory=list)
 
 
-def parse_source(source, path, max_symbols=100_000, max_calls=100_000):
+def parse_source(source, path, max_symbols=100_000, max_calls=100_000, language=None):
     from .languages import language_for_path
-    if language_for_path(path) == "Python":
+    language = language or language_for_path(path, source)
+    if language == "Python":
         return parse_python(source, path, max_symbols, max_calls)
-    if language_for_path(path) in {"JavaScript", "TypeScript"}:
+    if language in {"JavaScript", "TypeScript"}:
         from .script_parser import parse_script
         return parse_script(source, path, max_symbols, max_calls)
+    if language in {"C", "C++"}:
+        from .native_parser import parse_native
+        return parse_native(source, path, max_symbols, max_calls, language)
     raise ParsingError("Unsupported source language.")
 
 

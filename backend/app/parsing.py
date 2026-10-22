@@ -16,7 +16,7 @@ from .calls import build_calls, resolve_repository_calls
 MAX_SYMBOLS = 100_000
 MAX_CALLS = 100_000
 # Bump whenever extraction, scope serialization, or call matching changes.
-INDEX_FORMAT_VERSION = "3"
+INDEX_FORMAT_VERSION = "4"
 
 
 def invalidate_snapshot(session: Session, repository_id: int) -> None:
@@ -101,7 +101,7 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
     parsed_files = []
     for file in dirty:
         result = parse_source(file.source, file.path, max_symbols=MAX_SYMBOLS - symbol_count,
-                              max_calls=MAX_CALLS - call_count)
+                              max_calls=MAX_CALLS - call_count, language=file.language)
         symbols = [Symbol(file_id=file.id, **vars(symbol)) for symbol in result.symbols]
         symbol_count += len(symbols)
         call_count += len(result.calls)
@@ -127,7 +127,7 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
                 symbols=[symbol.id for symbol in symbols], parents=result.parents))))
     parsed = ParseSnapshot(repository_id=repository.id, commit_sha=snapshot.commit_sha,
         parsed_at=datetime.now(timezone.utc), file_count=len(files), symbol_count=symbol_count,
-        functions=counts["function"], classes=counts["class"], methods=counts["method"],
+        functions=counts["function"], classes=counts["class"] + counts["struct"] + counts["union"], methods=counts["method"],
         imports=counts["import"], parse_error_files=sum(item.has_parse_errors for item in file_results.values()))
     session.add(parsed)
     repository.status = "parsed"

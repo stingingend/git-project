@@ -34,6 +34,8 @@ export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, langua
       <strong>Call sites <span>Approximate analysis</span></strong>
       <p>{language === "Python"
         ? "Possible targets use lexical scope, explicit imports, and self/cls methods. Aliases, assignments, parameters, and runtime behavior can change the actual target."
+        : ["C", "C++"].includes(language)
+        ? "Possible targets use same-file definitions. Overloads can be ambiguous; cross-file calls, function pointers, macros, and virtual dispatch are not resolved."
         : "Possible targets use same-file lexical scope and direct this.method calls. Imported calls, arbitrary receiver types, and runtime rebinding remain unresolved."}</p>
       <label>Show <select aria-label="Filter call resolution" value={resolution} disabled={busy}
         onChange={event => { setResolution(event.target.value); setOffset(0); }}>

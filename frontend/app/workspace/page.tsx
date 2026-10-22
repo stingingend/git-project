@@ -425,7 +425,7 @@ export default function Home() {
             <Braces size={17} />
           </span>
           <div>
-            Powered by structure<small>Python / JS / TS · Tree-sitter</small>
+            Powered by structure<small>Tree-sitter · 5 languages</small>
           </div>
         </div>
       </aside>
@@ -461,7 +461,7 @@ export default function Home() {
                 <h2 id="connect-title">Bring your repository into focus</h2>
                 <p>
                   Connect a public GitHub repository to explore its Python,
-                  JavaScript, and TypeScript source.
+                  JavaScript, TypeScript, C, and C++ source.
                 </p>
               </div>
             </div>
@@ -500,7 +500,7 @@ export default function Home() {
             <div className="connect-foot">
               <span>
                 <CircleDot size={11} />
-                Public repos · Python / JS / TS · No API keys
+                Public repos · Python / JS / TS / C / C++ · No API keys
               </span>
               <button
                 disabled={busy}
@@ -705,7 +705,7 @@ export default function Home() {
                     icon: Braces,
                   },
                   {
-                    label: "Classes",
+                    label: "Classes / structs",
                     value: overview.parsing?.classes,
                     caption: overview.parsing
                       ? "Extracted from syntax trees"
@@ -739,8 +739,8 @@ export default function Home() {
               )}
               {!!overview.parsing?.parse_error_files && (
                 <div className="notice">
-                  {overview.parsing.parse_error_files} files required parser recovery.
-                  Recovered symbols may be incomplete.
+                  {overview.parsing.parse_error_files} files required parser
+                  recovery. Recovered symbols may be incomplete.
                 </div>
               )}
               <IntelligencePanel

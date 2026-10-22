@@ -76,6 +76,7 @@ def build_relationships(session, repository_id, commit_sha, files, parsed_files)
             modules[".".join(parts)].add(file.id)
     edges = []
     script_files = {file.path: file.id for file in files if language_for_path(file.path) in {"JavaScript", "TypeScript"}}
+    native_files = {file.path: file.id for file in files if language_for_path(file.path) in {"C", "C++"}}
     for file, parents, symbols in parsed_files:
         for index, symbol in enumerate(symbols):
             parent = parents[index]
@@ -86,6 +87,15 @@ def build_relationships(session, repository_id, commit_sha, files, parsed_files)
             if len(edges) > 300_000:
                 raise ParsingError("Repository exceeds the 300,000 relationship limit.")
             if symbol.symbol_type != "import":
+                continue
+            if file.language in {"C", "C++"}:
+                from .native_parser import include_target
+                label, target, resolution = include_target(file.path, symbol.signature, native_files)
+                edges.append(Relationship(repository_id=repository_id, file_id=file.id,
+                    kind="imports", source_symbol_id=symbol.id, target_symbol_id=None,
+                    target_file_id=target, label=label, resolution=resolution))
+                if len(edges) > 300_000:
+                    raise ParsingError("Repository exceeds the 300,000 relationship limit.")
                 continue
             if language_for_path(file.path) != "Python":
                 from .script_parser import script_modules

@@ -1,14 +1,14 @@
 # CodeAtlas
 
-A code intelligence platform for public GitHub repositories containing Python, JavaScript, and TypeScript: structural indexing, navigation, semantic retrieval, cited questions, dependency analysis, and PR impact reports.
+A code intelligence platform for public GitHub repositories containing Python, JavaScript, TypeScript, C, and C++: structural indexing, navigation, semantic retrieval, cited questions, dependency analysis, and PR impact reports.
 
 Structural tools, local semantic search, and source-backed findings work without an external LLM or API key. Generated explanations use an optional compatible model server.
 
 The website now has a public product home at `/` and the repository tools at `/workspace`. For a hosted personal workspace, the [Render deployment guide](docs/hosting.md) covers the checked-in Blueprint, private API, database, and password gate. Creating hosted services requires a Render account and review of its paid resource summary.
 
-## Local release: v0.22
+## Local release: v0.23
 
-Repositories can now mix Python, JavaScript, and TypeScript, including JSX/TSX. Re-index to collect the additional languages, then filter source files by language. See [language support](docs/languages.md) for supported definitions, relative-import resolution, call-analysis limits, and cache upgrades.
+Repositories can now include C and C++ source and headers alongside Python, JavaScript, and TypeScript. Native symbols include functions, classes, structs, namespaces, types, macros, and declarations; local includes appear in the dependency graph. Re-index to collect the additional files, then filter by language. See [language support](docs/languages.md) for extensions, header detection, include resolution, static-analysis limits, and cache upgrades.
 
 The remaining local roadmap is implemented: versioned migrations, broader call candidates, local semantic embeddings, source-cited questions, change impact, public PR reports and signed webhooks, architecture metrics, and benchmarks. Re-indexing preserves unchanged file indexes and saves run summaries. The website groups the new tools into semantic search, cited questions, impact/architecture, and PR panels.
 

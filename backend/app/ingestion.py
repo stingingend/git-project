@@ -148,6 +148,7 @@ class DiscoveredFile:
     source: str
     content_hash: str
     line_count: int
+    language: str
 
 
 def discover_source_files(path: Path, limits: Limits = Limits()) -> tuple[list[DiscoveredFile], int]:
@@ -187,7 +188,8 @@ def discover_source_files(path: Path, limits: Limits = Limits()) -> tuple[list[D
         except UnicodeDecodeError:
             skipped += 1
             continue
-        files.append(DiscoveredFile(file_path, source, hashlib.sha256(content).hexdigest(), len(source.splitlines())))
+        files.append(DiscoveredFile(file_path, source, hashlib.sha256(content).hexdigest(),
+                                    len(source.splitlines()), language_for_path(file_path, source)))
     return files, skipped
 
 
@@ -214,9 +216,9 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
     for path in changed:
         saved, fresh = existing[path], discovered[path]
         saved.source, saved.content_hash, saved.line_count = fresh.source, fresh.content_hash, fresh.line_count
-        saved.language = language_for_path(path)
+        saved.language = fresh.language
     for path in (set(existing) & set(discovered)) - changed:
-        existing[path].language = language_for_path(path)
+        existing[path].language = discovered[path].language
     changes = session.get(IndexChanges, repository.id)
     if changes is None:
         changes = IndexChanges(repository_id=repository.id)
@@ -235,7 +237,7 @@ def ingest_repository(session: Session, repository: Repository, limits: Limits =
     snapshot.skipped_files = skipped
     snapshot.line_count = sum(file.line_count for file in files)
     session.add_all([
-        SourceFile(repository_id=repository.id, path=file.path, language=language_for_path(file.path), source=file.source,
+        SourceFile(repository_id=repository.id, path=file.path, language=file.language, source=file.source,
                    content_hash=file.content_hash, line_count=file.line_count)
         for file in files if file.path in added
     ])

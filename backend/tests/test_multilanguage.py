@@ -127,7 +127,7 @@ def test_mixed_pipeline_languages_graphs_calls_and_search(client, mixed):
         graph = client.get(prefix + f"/files/{files[origin]['id']}/graph").json()
         assert destination in {node["path"] for node in graph["nodes"]}
     caps = client.get("/capabilities").json()
-    assert caps["languages"] == ["Python", "JavaScript", "TypeScript"]
+    assert caps["languages"] == ["Python", "JavaScript", "TypeScript", "C", "C++"]
 
 
 def test_script_incremental_updates_reuse_and_invalidate_graph_targets(client, mixed):

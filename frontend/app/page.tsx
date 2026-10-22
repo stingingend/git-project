@@ -206,7 +206,8 @@ export default function LandingPage() {
           </div>
           <div className="hero-notes">
             <span>
-              <ShieldCheck size={14} /> Python · JavaScript · TypeScript
+              <ShieldCheck size={14} /> Python · JavaScript · TypeScript · C ·
+              C++
             </span>
             <span>
               <Braces size={14} /> Source-backed insights
