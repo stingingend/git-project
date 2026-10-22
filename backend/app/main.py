@@ -67,7 +67,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(pr_worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.19.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.21.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -82,6 +82,14 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except SQLAlchemyError as exc:
             raise HTTPException(503, "Database unavailable.") from exc
         return {"status": "ready"}
+
+    @application.get("/capabilities", summary="Inspect feature configuration without exposing secrets")
+    def capabilities(session: Session = Depends(get_session)):
+        return dict(version=application.version, schema=session.scalar(text("SELECT version_num FROM alembic_version")),
+            storage=session.get_bind().dialect.name, semantic="local_model2vec",
+            generation_configured=bool(os.getenv("CODEATLAS_GENERATION_URL") and os.getenv("CODEATLAS_GENERATION_MODEL")),
+            webhooks_configured=len(os.getenv("CODEATLAS_WEBHOOK_SECRET", "")) >= 16,
+            repositories="public_python", worker_mode="single_api_process")
 
     @application.post("/repositories", response_model=RepositoryRead, status_code=201,
                       summary="Register a GitHub repository URL (step 1)")

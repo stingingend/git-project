@@ -8,6 +8,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
 RUN pip install '.[postgres]'
+RUN mkdir -p /home/codeatlas/.cache/huggingface && chown -R codeatlas:codeatlas /home/codeatlas/.cache
 USER codeatlas
 EXPOSE 8001
 # One worker: ingestion and parsing currently share an in-process lock.

@@ -161,3 +161,18 @@ def test_postgres_native_semantic_vectors(postgres_client, monkeypatch):
     verify_semantic(postgres_client, int(prefix.split("/")[-1]), monkeypatch)
     with postgres_client.app.state.sessions() as session:
         assert session.scalar(text("SELECT count(*) FROM search_vectors")) == 4
+        file = session.scalar(select(SourceFile).order_by(SourceFile.id))
+        file.source += "\n# changed source\n"
+        file.content_hash = "3" * 64
+        session.commit()
+    assert postgres_client.post(prefix + "/parse").status_code == 200
+    with postgres_client.app.state.sessions() as session:
+        assert session.scalar(text("SELECT count(*) FROM search_vectors")) == 2
+    rebuilt = postgres_client.post(prefix + "/semantic").json()
+    assert rebuilt["embedded"] == 2 and rebuilt["reused"] == 2
+
+
+def test_postgres_pr_report_worker_and_metrics(postgres_client, monkeypatch):
+    from test_pull_requests import test_pr_reports_map_base_lines_and_survive_reload
+    prefix = seed(postgres_client)
+    test_pr_reports_map_base_lines_and_survive_reload(postgres_client, int(prefix.split("/")[-1]), monkeypatch)

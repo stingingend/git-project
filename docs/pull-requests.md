@@ -21,4 +21,8 @@ Set a random `CODEATLAS_WEBHOOK_SECRET` of at least sixteen characters, restart 
 
 The receiver verifies [HMAC-SHA256 over the raw body](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries), limits payload size, requires a delivery ID, and deduplicates saved deliveries. Opened, reopened, and synchronized PR events schedule reports for already registered public repositories. Other events/actions are ignored. Webhooks do not replace the current repository snapshot automatically and do not post comments.
 
+The release browser check analyzed `pallets/itsdangerous` PR #428 against indexed base `672971d`, finding two changed files, one changed definition, seven possible callers, and ten potential dependent files. These are static candidates for that captured PR revision.
+
+![Saved public PR impact report](pr-preview.jpg)
+
 One PR worker runs per API process with one active report; additional work receives 409 and can be retried. The queue is not distributed. Restart marks unfinished reports interrupted. Migration `005_pull_requests` adds report and target-commit records. Tests cover signed/invalid/duplicate deliveries, exact-base mapping, mismatch behavior, worker recovery, targeted indexing, and known downstream test dependents.

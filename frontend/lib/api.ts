@@ -62,6 +62,7 @@ export function createApi(fetcher: typeof fetch = fetch) {
     return body as T;
   }
   return {
+    capabilities: () => request<{generation_configured: boolean; webhooks_configured: boolean; version: string}>("/capabilities"),
     startPullRequest: (id: number, number: number) => request<PullRequestReport>(`/repositories/${id}/pull-requests`, {
       method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({number}),
     }),

@@ -18,9 +18,11 @@ export function IntelligencePanel({ repositoryId, commitSha, parsed, busy, selec
   const [note, setNote] = useState("");
   const [mode, setMode] = useState<"search" | "question">("search");
   const [generated, setGenerated] = useState(false);
+  const [generationAvailable, setGenerationAvailable] = useState(false);
   const [answer, setAnswer] = useState<CitedAnswer | null>(null);
   useEffect(() => {
     let current = true;
+    api.capabilities().then(capabilities => { if (current) setGenerationAvailable(capabilities.generation_configured); }).catch(() => {});
     if (parsed) api.semanticStatus(repositoryId).then(status => { if (current) setReady(status.ready); })
       .catch(reason => { if (current) setError(reason.message); });
     return () => { current = false; };
@@ -69,7 +71,8 @@ export function IntelligencePanel({ repositoryId, commitSha, parsed, busy, selec
         {mode === "search" ? "Search by meaning" : "Find cited answers"}</button>
     </form>
     {mode === "question" && <label className="intelligence-note"><input type="checkbox" checked={generated}
-      onChange={event => setGenerated(event.target.checked)} /> Use the configured model server for an explanation</label>}
+      disabled={!generationAvailable || working} onChange={event => setGenerated(event.target.checked)} />
+      {generationAvailable ? "Use the configured model server for an explanation" : "Optional model server is not configured; source-backed findings are available."}</label>}
     {error && <p role="alert" className="intelligence-error">{error}</p>}
     {mode === "search" && result && <div className="intelligence-results" aria-live="polite">
       <p>{result.items.length} matches · commit {result.commit_sha.slice(0, 7)} · cosine similarity</p>

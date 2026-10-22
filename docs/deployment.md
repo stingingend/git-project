@@ -17,7 +17,7 @@ Open **http://127.0.0.1:13000**. The container API docs are at **http://127.0.0.
 
 The database has a named volume and no host port. API/web ports bind to localhost. The API and web containers run as non-root users. API startup waits for PostgreSQL health, and web startup waits for API readiness. The web health check traverses the Next.js proxy to the API/database. Compose's [health-based dependency ordering](https://docs.docker.com/compose/how-tos/startup-order/) handles initial startup.
 
-The API image includes Git for ingestion and the PostgreSQL driver. The web image uses [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output); its `API_URL=http://api:8001` rewrite is fixed at build time. A changed API destination requires rebuilding the web image. Standard local builds still use `next start`.
+The API image includes Git, the PostgreSQL driver, Alembic, and local embedding dependencies. A named model-cache volume preserves downloaded weights. PostgreSQL uses the pgvector image; extension creation requires an appropriately privileged migration role when that extension is available. The web image uses [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output); its `API_URL=http://api:8001` rewrite is fixed at build time. A changed API destination requires rebuilding the web image. Standard local builds still use `next start`.
 
 Useful commands:
 
@@ -29,9 +29,9 @@ docker compose --env-file .env.docker down
 
 `down` preserves the database volume. Start again with `up --wait` to reuse the data. PostgreSQL's initialization password is applied only when creating a fresh volume; editing the environment file does not rotate an existing database password. The example password is for this local development stack. Use URL-safe letters/digits because the password is included in a connection URL.
 
-Docker starts a separate PostgreSQL database. It does not copy or replace existing SQLite data. Register and index repositories in the Docker interface to populate that database. Schema startup creates missing tables; automatic schema migrations and SQLite data transfer are not implemented yet.
+Docker starts a separate PostgreSQL database. It does not copy or replace existing SQLite data. Register and index repositories in the Docker interface to populate that database. Startup applies versioned Alembic migrations; [back up before upgrades](migrations.md). SQLite data transfer remains a separate operation.
 
-Run only **one API worker and one API instance** against a database. Background indexing uses a local worker thread and shares the process-local ingestion/parse lock. Compose allows 120 seconds for graceful API shutdown. See [background jobs](jobs.md) for progress, interrupted-job recovery, and limitations. Distributed locking is later work. This setup is for local use; authentication and public hosting are not part of this phase.
+Run only **one API worker and one API instance** against a database. Background indexing uses a local worker thread and shares the process-local ingestion/parse lock. Compose allows 120 seconds for graceful API shutdown. See [background jobs](jobs.md) for progress, interrupted-job recovery, and limitations. This Compose setup binds to localhost. Public hosting, access control, account setup, and distributed coordination are separate activation/product extensions; see [release operations](release.md).
 
 ## PostgreSQL without Docker
 

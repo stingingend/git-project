@@ -20,6 +20,12 @@ services:
     stop_grace_period: 120s
     environment:
       DATABASE_URL: postgresql+psycopg://codeatlas:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}@db:5432/codeatlas
+      CODEATLAS_GENERATION_URL: ${CODEATLAS_GENERATION_URL:-}
+      CODEATLAS_GENERATION_MODEL: ${CODEATLAS_GENERATION_MODEL:-}
+      CODEATLAS_GENERATION_KEY: ${CODEATLAS_GENERATION_KEY:-}
+      CODEATLAS_WEBHOOK_SECRET: ${CODEATLAS_WEBHOOK_SECRET:-}
+    volumes:
+      - model-cache:/home/codeatlas/.cache/huggingface
     depends_on:
       db:
         condition: service_healthy
@@ -51,3 +57,4 @@ services:
 
 volumes:
   postgres-data:
+  model-cache:

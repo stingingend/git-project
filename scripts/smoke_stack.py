@@ -31,6 +31,9 @@ def main():
                 raise
     repos = request(args.web + "/api/repositories")
     assert isinstance(request(args.web + "/api/jobs?limit=1"), list)
+    capabilities = request(args.web + "/api/capabilities")
+    assert capabilities["schema"] == "005_pull_requests"
+    assert capabilities["storage"] == "postgresql"
     assert any(repo["github_url"] == url for repo in repos), "Registered repository did not persist"
     print("Stack smoke check passed: web, proxy, API, PostgreSQL persistence.")
 

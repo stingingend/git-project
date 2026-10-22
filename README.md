@@ -1,12 +1,25 @@
 # CodeAtlas
 
-A code intelligence platform that will turn a public GitHub repository into an explorable index of files, symbols, and dependencies.
+A code intelligence platform for public Python GitHub repositories: structural indexing, navigation, semantic retrieval, cited questions, dependency analysis, and PR impact reports.
 
-The project starts with Python and structural analysis. Search and AI features will build on a real index later.
+Structural tools, local semantic search, and source-backed findings work without an external LLM or API key. Generated explanations use an optional compatible model server.
 
-## Current milestone: incremental indexing
+## Local release: v0.21
 
-Re-indexing compares file hashes, parses new or changed Python files, and reuses unchanged symbols and call records with stable IDs. Each background run saves its added, changed, removed, unchanged, parsed, and reused file counts. Import relationships are rebuilt against the current inventory. Existing indexes need one full parse to seed the cache. See [incremental indexing](docs/incremental.md), [background jobs](docs/jobs.md), or [the deployment guide](docs/deployment.md).
+The remaining local roadmap is implemented: versioned migrations, broader call candidates, local semantic embeddings, source-cited questions, change impact, public PR reports and signed webhooks, architecture metrics, and benchmarks. Re-indexing preserves unchanged file indexes and saves run summaries. The website groups the new tools into semantic search, cited questions, impact/architecture, and PR panels.
+
+| Feature | Guide |
+| --- | --- |
+| Incremental indexing and saved jobs | [Reuse](docs/incremental.md), [jobs](docs/jobs.md) |
+| Approximate cross-file calls | [Call candidates](docs/cross-file-calls.md) |
+| Meaning-based local search | [Semantic search](docs/semantic-search.md) |
+| Source-backed questions and optional generation | [Cited questions](docs/questions.md) |
+| Reverse dependencies, cycles, and hubs | [Impact and architecture](docs/impact-and-architecture.md) |
+| Public PR reports and authenticated webhook intake | [Pull requests](docs/pull-requests.md) |
+| Schema upgrades and operational checks | [Migrations](docs/migrations.md), [release](docs/release.md) |
+| Reproducible performance measurements | [Benchmarks](docs/benchmarking.md) |
+
+Public hosting, private-repository OAuth, distributed queues, and GitHub App comment publishing remain separate account/product extensions. This release runs locally and does not activate paid services or post messages.
 
 With Docker Desktop running, start from the repository root:
 
@@ -17,7 +30,7 @@ docker compose --env-file .env.docker up --build --wait
 
 Open **http://127.0.0.1:13000** for the container website. The manual local setup below still uses SQLite and port 3000.
 
-![CodeAtlas incremental indexing](docs/incremental-preview.jpg)
+![CodeAtlas intelligence workspace](docs/workspace-preview.jpg)
 
 ### Run locally
 
@@ -41,7 +54,7 @@ Open **http://127.0.0.1:3000**. Enter a URL such as `https://github.com/pallets/
 
 The frontend sends `/api/*` requests through Next.js to `http://127.0.0.1:8001`. If the backend uses a different address, copy `frontend/.env.example` to `frontend/.env.local`, change `API_URL`, and restart Next.js. For production builds, set `API_URL` before building. There are no browser-side secrets and no additional CORS configuration is needed for this local proxy.
 
-Both servers bind to localhost. Public deployment is a later milestone. To stop a server, press **Ctrl+C** in its terminal. If port 3000 is occupied, stop the old frontend or run `npm run dev -- --port 3001`.
+Both servers bind to localhost. See [release operations](docs/release.md) for external activation and hosting requirements. To stop a server, press **Ctrl+C** in its terminal. If port 3000 is occupied, stop the old frontend or run `npm run dev -- --port 3001`.
 
 Open [the health endpoint](http://127.0.0.1:8001/health) or [the API documentation](http://127.0.0.1:8001/docs).
 
@@ -105,7 +118,7 @@ For a smaller first example, register `https://github.com/pallets/itsdangerous`.
 
 Successful ingestion changes the repository status to `ingested`. This means source has been collected; no symbols have been parsed yet. Re-ingestion replaces the snapshot atomically. A failure preserves the previous snapshot, or leaves a new repository `registered`. The temporary clone is removed before the database transaction commits. A repository with no eligible Python files succeeds with a file count of zero.
 
-Ingestion runs in the request. Use one API process/worker: a per-process lock allows one ingestion at a time and returns `409` if busy. Clone/read/limit failures return `422`; missing records or snapshots return `404`. Background jobs and progress reporting come later.
+The synchronous ingestion endpoint remains available for API clients. The website uses durable background jobs. Use one API process/instance per database: a shared local lock allows one indexing operation at a time and returns `409` if busy. Clone/read/limit failures return `422`; missing records or snapshots return `404`. See [job progress and recovery](docs/jobs.md).
 
 ### Ingestion limits
 
@@ -211,6 +224,14 @@ From the repository root:
 .\.venv\Scripts\python.exe -m pytest backend/tests -q
 ```
 
+### Reproducible benchmarks
+
+```powershell
+.\.venv\Scripts\python.exe scripts/benchmark_index.py --files 100 --changed 4 --repeat 3 --semantic --output docs/benchmark-latest.json
+```
+
+The isolated fixture preserves the user's database and checks unchanged IDs. The [committed run and methodology](docs/benchmarking.md) measured median parsing/publication of 365 ms full and 143 ms incremental, with 96 of 100 files reused. Clone and discovery costs are measured separately.
+
 ### Frontend checks and production build
 
 From `frontend/`:
@@ -224,7 +245,7 @@ npm start
 
 `npm test` uses Node 24's built-in test runner to exercise request handling and workflow order with fake HTTP responses. A production build and `npm start` still need the FastAPI server running. The npm lockfile makes dependency installation repeatable.
 
-The UI displays existing registered/ingested repositories on load. **Run indexing** or **Re-index** recollects and parses their source. A failure keeps the backend's last successful stage; the error appears in the page and the repository can be retried. Indexing is synchronous, so keep the tab open while it runs.
+The UI displays saved repositories on load. **Index repository** or **Re-index** submits a background job, recollects source, and reuses unchanged indexes. A failure keeps the backend's last committed stage; the error appears in the page and the repository can be retried. Reloading reconnects to saved progress, and closing the tab does not cancel indexing.
 
 Source is rendered as text, never HTML. The viewer shows at most 200 source lines at a time. File symbols use the API's 100-record pages; select a symbol to open its source. The GitHub link points to the indexed commit and the selected line range. The file filter matches file paths locally; repository-wide search uses the backend index.
 
@@ -247,9 +268,9 @@ See [the ingestion walkthrough](docs/ingestion.md) for Git objects, source disco
 
 See [the parsing walkthrough](docs/parsing.md) for syntax trees, scope tracking, symbol records, and recovery behavior.
 
-See [the index inspection walkthrough](docs/index-inspection.md) for the new read API and how a future frontend can use it.
+See [the index inspection walkthrough](docs/index-inspection.md) for the read API used by the explorer.
 
-See [the roadmap](docs/roadmap.md) for the next steps.
+See [the roadmap](docs/roadmap.md) for completed milestones and remaining external activation.
 
 See [the frontend walkthrough](docs/frontend.md) for component state, the API proxy, and the indexing workflow.
 

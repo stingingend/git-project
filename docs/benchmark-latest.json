@@ -1,0 +1,57 @@
+{
+  "timestamp": "2026-10-22T01:30:37.957634+00:00",
+  "python": "3.12.14",
+  "os": "Windows",
+  "storage": "SQLite",
+  "files": 100,
+  "changed_files": 4,
+  "repeat": 3,
+  "symbols": 2099,
+  "lines": 4499,
+  "full_parse_seconds": [
+    0.3649405000032857,
+    0.3895586000289768,
+    0.3631872000405565
+  ],
+  "incremental_parse_seconds": [
+    0.14419809996616095,
+    0.14276089996565133,
+    0.1381182000041008
+  ],
+  "discovery_persistence_seconds": [
+    2.5552392000099644,
+    2.798375600017607,
+    2.5558669000165537
+  ],
+  "median_full_parse_seconds": 0.3649405000032857,
+  "median_incremental_parse_seconds": 0.14276089996565133,
+  "measured_parse_speedup": 2.5563056837768,
+  "median_symbol_query_seconds": 0.0041767000220716,
+  "runs": [
+    {
+      "parsed": 4,
+      "reused": 96,
+      "commit_sha": "8510587abbe9a841227e38558bf7b079b236f62c",
+      "unchanged_ids_preserved": true
+    },
+    {
+      "parsed": 4,
+      "reused": 96,
+      "commit_sha": "0773418a8467ce5a8b1accaf31ad7f249edc7439",
+      "unchanged_ids_preserved": true
+    },
+    {
+      "parsed": 4,
+      "reused": 96,
+      "commit_sha": "7f7a4a21abb16b8f43b674765f4f572b454ddce5",
+      "unchanged_ids_preserved": true
+    }
+  ],
+  "methodology": "Synthetic local Git revisions; network clone excluded. Parse/publication measured separately from discovery. Full runs invalidate the syntax cache format. No repository code executes.",
+  "semantic": {
+    "model_load_seconds": 0.707084699999541,
+    "build_seconds": 0.6842056000605226,
+    "document_count": 2100,
+    "median_query_seconds": 0.2133834499400109
+  }
+}

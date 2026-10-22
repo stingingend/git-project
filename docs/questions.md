@@ -17,3 +17,7 @@ Restart the API after setting its environment, then select **Use the configured 
 The model has no tools, receives source as untrusted evidence, and must cite supplied numeric labels. Redirects are refused, requests time out, and response size is bounded. Missing/unknown citation labels or invented URLs cause a fallback to source findings. Valid labels do not prove that every generated claim is correct; inspect the linked evidence. Repository code is never executed. The read transaction is released before model inference.
 
 Tests cover real stored-source citations, generation opt-in, unavailable/invalid model fallback, request validation, and rejecting fabricated citation labels. Model-server configuration and a model download are intentionally separate from repository indexing.
+
+The release browser check used the real local embedding model to retrieve `Signer.validate` and related source, then navigated an imported call from `serializer.py` to `encoding.py::want_bytes` through the commit-checked source viewer.
+
+![Source-cited repository findings](workspace-preview.jpg)

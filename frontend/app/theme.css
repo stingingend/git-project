@@ -344,3 +344,5 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
 .cycle-group { padding: 12px; background: #fff8ed; border: 1px solid #f1ddbd; border-radius: 10px; margin-bottom: 10px; font-size: 12px; }
 .pr-panel a { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: #315ed5; }
 .pr-dependent { padding: 8px 10px; border: 1px solid #d6e1ed; border-radius: 6px; background: #f4f8fd; color: #385575; font-size: 12px; overflow-wrap: anywhere; }
+.analysis-panel > summary::after { content: "+"; margin-left: 8px; font-size: 18px; color: #647da3; }
+.analysis-panel[open] > summary::after { content: "−"; }

@@ -29,6 +29,7 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: python -m pip install -e "./backend[test,postgres]"
       - run: python -m pytest backend/tests -q
+      - run: python scripts/benchmark_index.py --files 6 --changed 2 --repeat 1
 
   postgres:
     runs-on: ubuntu-latest
@@ -79,6 +80,8 @@ jobs:
       - uses: actions/checkout@v6
       - run: docker compose --env-file .env.docker.example config --quiet
       - run: docker compose --env-file .env.docker.example up --build --wait --wait-timeout 120
+      - name: Verify unprivileged model cache writes
+        run: docker compose --env-file .env.docker.example exec -T api python -c "import os,tempfile; from pathlib import Path; assert os.geteuid()!=0; f=tempfile.TemporaryFile(dir=Path.home()/'.cache'/'huggingface'); f.write(b'cache-check'); f.close()"
       - run: python scripts/smoke_stack.py
       - name: Restart with the same database volume
         run: |
