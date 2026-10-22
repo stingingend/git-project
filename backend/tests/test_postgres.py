@@ -153,3 +153,11 @@ def test_postgres_incremental_diff_and_foreign_keys(postgres_client, local_clone
 def test_postgres_cross_file_call_invalidation(postgres_client, local_clone, git_repository):
     from test_cross_calls import test_unchanged_imported_calls_relink_after_target_changes
     test_unchanged_imported_calls_relink_after_target_changes(postgres_client, local_clone, git_repository)
+
+
+def test_postgres_native_semantic_vectors(postgres_client, monkeypatch):
+    from test_semantic import verify_semantic
+    prefix = seed(postgres_client)
+    verify_semantic(postgres_client, int(prefix.split("/")[-1]), monkeypatch)
+    with postgres_client.app.state.sessions() as session:
+        assert session.scalar(text("SELECT count(*) FROM search_vectors")) == 4

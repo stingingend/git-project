@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codeatlas-api"
-version = "0.15.0"
+version = "0.17.0"
 description = "Structural repository intelligence, starting with Python."
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
     "uvicorn>=0.34,<1",
     "sqlalchemy>=2.0,<3",
     "alembic>=1.14,<2",
+    "model2vec>=0.10,<0.11",
     "tree-sitter==0.25.2",
     "tree-sitter-python==0.25.0",
 ]

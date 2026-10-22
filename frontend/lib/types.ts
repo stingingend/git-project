@@ -85,6 +85,18 @@ export type SearchHit = {
   path: string;
   has_parse_errors: boolean;
 };
+
+export type SemanticHit = {
+  document_id: number; score: number; path: string; file_id: number;
+  symbol: SymbolRecord | null; title: string; start_line: number; end_line: number;
+  excerpt: string; truncated: boolean; github_url: string;
+};
+export type SemanticResults = { repository_id: number; commit_sha: string; query: string; model: string; items: SemanticHit[] };
+export type CitedAnswer = {
+  question: string; commit_sha: string; answer: string; mode: "source_findings" | "generated"; notice: string | null;
+  citations: {id: number; title: string; path: string; file_id: number; symbol: SymbolRecord | null;
+    start_line: number; end_line: number; github_url: string; quote: string; quote_truncated: boolean}[];
+};
 export type SearchPage = {
   repository_id: number;
   query: string;

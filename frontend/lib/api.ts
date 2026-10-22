@@ -11,6 +11,8 @@ import type {
   DependencyGraph,
   CallPage,
   IndexJob,
+  SemanticResults,
+  CitedAnswer,
 } from "./types";
 
 export class ApiError extends Error {
@@ -57,6 +59,12 @@ export function createApi(fetcher: typeof fetch = fetch) {
     return body as T;
   }
   return {
+    ask: (id: number, question: string, generate: boolean) => request<CitedAnswer>(`/repositories/${id}/questions`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({question, generate}),
+    }),
+    semanticStatus: (id: number) => request<{ready: boolean; document_count: number; model: string}>(`/repositories/${id}/semantic`),
+    buildSemantic: (id: number) => request<{embedded: number; reused: number; document_count: number}>(`/repositories/${id}/semantic`, {method: "POST"}),
+    semanticSearch: (id: number, query: string) => request<SemanticResults>(`/repositories/${id}/semantic/search?q=${encodeURIComponent(query)}`),
     repositories: () => request<Repository[]>("/repositories"),
     jobs: () => request<IndexJob[]>("/jobs?limit=10"),
     job: (id: string) => request<IndexJob>(`/jobs/${encodeURIComponent(id)}`),

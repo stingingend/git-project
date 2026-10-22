@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:17-bookworm
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_DB: codeatlas_test
           POSTGRES_USER: codeatlas

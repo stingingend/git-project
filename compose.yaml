@@ -1,7 +1,7 @@
 name: codeatlas
 services:
   db:
-    image: postgres:17-bookworm
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: codeatlas
       POSTGRES_USER: codeatlas

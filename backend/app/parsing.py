@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from .models import (FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile,
                      Symbol, Relationship, RelationshipSnapshot, CallSite, CallSnapshot,
-                     FileIndexState, IndexChanges, CallOrigin)
+                     FileIndexState, IndexChanges, CallOrigin, SearchDocument, SemanticSnapshot)
 from .parser import ParsingError, parse_python
 from .relationships import build_relationships
 from .calls import build_calls, resolve_repository_calls
@@ -20,6 +20,7 @@ INDEX_FORMAT_VERSION = "2"
 
 
 def invalidate_snapshot(session: Session, repository_id: int) -> None:
+    session.execute(delete(SemanticSnapshot).where(SemanticSnapshot.repository_id == repository_id))
     # Cross-file targets must be detached before changed definitions are deleted.
     origin = select(CallOrigin.call_id).where(CallOrigin.call_id == CallSite.id).exists()
     session.execute(update(CallSite).where(CallSite.repository_id == repository_id, origin)
@@ -34,6 +35,7 @@ def invalidate_snapshot(session: Session, repository_id: int) -> None:
 
 
 def clear_file_results(session: Session, file_ids) -> None:
+    session.execute(delete(SearchDocument).where(SearchDocument.file_id.in_(file_ids)))
     calls = select(CallSite.id).where(CallSite.file_id.in_(file_ids))
     session.execute(delete(CallOrigin).where(CallOrigin.call_id.in_(calls)))
     session.execute(delete(CallSite).where(CallSite.file_id.in_(file_ids)))

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from .database import Base, create_database
 from .migrations import upgrade_database
+from .intelligence_routes import install as install_intelligence_routes
 from .ingestion import IngestionError, ingest_repository
 from .index import file_detail, repository_overview, search_symbols, symbol_detail
 from .models import FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile, Symbol
@@ -61,7 +62,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             await asyncio.to_thread(worker.close)
             engine.dispose()
 
-    application = FastAPI(title="CodeAtlas", version="0.15.0", lifespan=lifespan)
+    application = FastAPI(title="CodeAtlas", version="0.17.0", lifespan=lifespan)
     application.state.sessions = sessions
     application.state.ingestion_lock = threading.Lock()
 
@@ -280,6 +281,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(404, "Indexing job not found.")
         return read_jobs(session, [job])[0]
 
+    install_intelligence_routes(application, get_session, get_index_session)
     return application
 
 

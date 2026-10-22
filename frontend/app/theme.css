@@ -305,3 +305,23 @@ button.graph-node:hover:not([aria-disabled="true"]) { border-color: #315de7; bac
 .change-counts strong { color: #183454; font-size: 19px; font-variant-numeric: tabular-nums; }
 .index-changes p { margin: 10px 0 0; font-size: 12px; color: #345778; }
 .job-history article .index-changes p { color: #345778; }
+
+.intelligence-panel { margin: 24px 0; padding: 24px; background: #fff; border: 1px solid #dfe6f0; border-radius: 16px; }
+.intelligence-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
+.intelligence-heading h2 { display: flex; align-items: center; gap: 10px; font-size: 18px; color: #183454; }
+.intelligence-heading p, .intelligence-note { color: #60728b; font-size: 12px; line-height: 1.7; }
+.intelligence-query { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.intelligence-query input { flex: 1; min-width: 180px; padding: 12px; border: 1px solid #ccd8e8; border-radius: 8px; color: #183454; background: #f8fafd; }
+.intelligence-panel button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #d6e1ed; border-radius: 8px; background: #f3f7fd; color: #264a7b; cursor: pointer; }
+.intelligence-panel button:disabled { opacity: .5; cursor: default; }
+.intelligence-query button.primary { background: #315ed5; color: white; border-color: #315ed5; }
+.intelligence-error { color: #a3283c; }
+.intelligence-results { margin-top: 18px; font-size: 13px; max-height: 580px; overflow: auto; padding-right: 8px; }
+.intelligence-results article { padding: 16px 0; border-top: 1px solid #e0e8f2; }
+.intelligence-results article > div { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.intelligence-results small, .intelligence-results > p { color: #64748b; }
+.intelligence-results pre { max-height: 180px; overflow: auto; padding: 12px; background: #f3f6fb; border-radius: 8px; line-height: 1.65; color: #284567; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.intelligence-results a { color: #315ed5; display: inline-flex; align-items: center; gap: 6px; }
+.intelligence-tabs { display: flex; gap: 8px; margin: 14px 0; }
+.intelligence-tabs button[aria-pressed="true"] { background: #e5edff; border-color: #9bb5ef; }
+.cited-answer { white-space: pre-wrap; color: #24415f; line-height: 1.9; }

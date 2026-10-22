@@ -179,3 +179,27 @@ class CallOrigin(Base):
     call_id: Mapped[int] = mapped_column(ForeignKey("call_sites.id"), primary_key=True)
     target_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
     resolution: Mapped[str] = mapped_column(String(20))
+
+
+class SearchDocument(Base):
+    __tablename__ = "search_documents"
+    __table_args__ = (UniqueConstraint("file_id", "unit_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("source_files.id"), index=True)
+    symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    unit_key: Mapped[str] = mapped_column(String(80))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(200))
+    embedding: Mapped[str] = mapped_column(Text)
+
+
+class SemanticSnapshot(Base):
+    __tablename__ = "semantic_snapshots"
+
+    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
+    commit_sha: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(200))
+    document_count: Mapped[int]
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

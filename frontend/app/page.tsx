@@ -39,6 +39,7 @@ import { SourceViewer } from "../components/source-viewer";
 import { SymbolSearch } from "../components/symbol-search";
 import { Relationships } from "../components/relationships";
 import { DependencyGraph } from "../components/dependency-graph";
+import { IntelligencePanel } from "../components/intelligence-panel";
 
 const api = createApi();
 const stages: Stage[] = ["registering", "queued", "ingesting", "parsing"];
@@ -378,7 +379,7 @@ export default function Home() {
           </div>
           <span>
             <span className="status-dot" />
-            Local development <span className="version">v0.15</span>
+            Local development <span className="version">v0.17</span>
           </span>
         </header>
         <div className="content">
@@ -650,6 +651,12 @@ export default function Home() {
                   Recovered symbols may be incomplete.
                 </div>
               )}
+              <IntelligencePanel key={`intelligence:${selectedId}:${revision}`} repositoryId={overview.repository.id}
+                commitSha={overview.snapshot?.commit_sha ?? ""} parsed={overview.parsing !== null} busy={busy}
+                select={(hit, commit) => {
+                  if (hit.symbol) void openSymbol({symbol: hit.symbol, path: hit.path, has_parse_errors: false}, commit);
+                  else if (commit === overview.snapshot?.commit_sha) void openFile(hit.file_id);
+                }} />
               <SymbolSearch
                 key={`${selectedId}:${revision}`}
                 repositoryId={overview.repository.id}
@@ -733,7 +740,7 @@ export default function Home() {
                           void openSymbol(
                             {
                               symbol,
-                              path: detail.file.path,
+                              path: files.find(file => file.id === symbol.file_id)?.path ?? detail.file.path,
                               has_parse_errors:
                                 detail.parsing?.has_parse_errors ?? false,
                             },
