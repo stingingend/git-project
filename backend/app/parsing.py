@@ -3,23 +3,29 @@ from collections import Counter
 from datetime import datetime, timezone
 import json
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from .models import (FileParse, ParseSnapshot, Repository, RepositorySnapshot, SourceFile,
                      Symbol, Relationship, RelationshipSnapshot, CallSite, CallSnapshot,
-                     FileIndexState, IndexChanges)
+                     FileIndexState, IndexChanges, CallOrigin)
 from .parser import ParsingError, parse_python
 from .relationships import build_relationships
-from .calls import build_calls
+from .calls import build_calls, resolve_repository_calls
 
 MAX_SYMBOLS = 100_000
 MAX_CALLS = 100_000
 # Bump whenever extraction, scope serialization, or call matching changes.
-INDEX_FORMAT_VERSION = "1"
+INDEX_FORMAT_VERSION = "2"
 
 
 def invalidate_snapshot(session: Session, repository_id: int) -> None:
+    # Cross-file targets must be detached before changed definitions are deleted.
+    origin = select(CallOrigin.call_id).where(CallOrigin.call_id == CallSite.id).exists()
+    session.execute(update(CallSite).where(CallSite.repository_id == repository_id, origin)
+        .values(target_symbol_id=select(CallOrigin.target_symbol_id).where(CallOrigin.call_id == CallSite.id).scalar_subquery(),
+                resolution=select(CallOrigin.resolution).where(CallOrigin.call_id == CallSite.id).scalar_subquery()),
+        execution_options={"synchronize_session": False})
     # Imports can point into any file, so remove these before deleting symbols/files.
     session.execute(delete(Relationship).where(Relationship.repository_id == repository_id))
     session.execute(delete(RelationshipSnapshot).where(RelationshipSnapshot.repository_id == repository_id))
@@ -28,6 +34,8 @@ def invalidate_snapshot(session: Session, repository_id: int) -> None:
 
 
 def clear_file_results(session: Session, file_ids) -> None:
+    calls = select(CallSite.id).where(CallSite.file_id.in_(file_ids))
+    session.execute(delete(CallOrigin).where(CallOrigin.call_id.in_(calls)))
     session.execute(delete(CallSite).where(CallSite.file_id.in_(file_ids)))
     session.execute(delete(Symbol).where(Symbol.file_id.in_(file_ids)))
     session.execute(delete(FileParse).where(FileParse.file_id.in_(file_ids)))
@@ -123,6 +131,8 @@ def parse_repository(session: Session, repository: Repository) -> ParseSnapshot:
     repository.status = "parsed"
     build_relationships(session, repository.id, snapshot.commit_sha, files, structure)
     build_calls(session, repository.id, parsed_files)
+    session.flush()
+    resolve_repository_calls(session, repository.id, files, structure)
     session.add(CallSnapshot(repository_id=repository.id, commit_sha=snapshot.commit_sha))
     changes = session.get(IndexChanges, repository.id)
     if changes is not None:

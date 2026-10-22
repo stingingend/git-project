@@ -31,7 +31,7 @@ export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, busy, 
   return <>
     <div className="call-intro">
       <strong>Call sites <span>Approximate analysis</span></strong>
-      <p>Possible targets match definitions in this file. Aliases, assignments, parameters, and runtime behavior can change the actual target.</p>
+      <p>Possible targets use lexical scope, explicit imports, and self/cls methods. Aliases, assignments, parameters, and runtime behavior can change the actual target.</p>
       <label>Show <select aria-label="Filter call resolution" value={resolution} disabled={busy}
         onChange={event => { setResolution(event.target.value); setOffset(0); }}>
         <option value="">All calls</option><option value="candidate">Possible targets</option>
@@ -50,7 +50,7 @@ export function CallBrowser({ repositoryId, fileId, commitSha, githubUrl, busy, 
         <small>Enclosed by {call.caller?.name ?? "module"} · {call.call_type}</small>
         {call.target ? <button className="call-target" disabled={busy || loading} onClick={() => selectSymbol(call.target!)}>
           <ArrowUpRight size={13} /> Possible target: {call.target.name} <span>L{call.target.start_line}</span>
-        </button> : <span className="call-resolution">{call.resolution === "ambiguous" ? "Multiple definitions match" : "No same-file target suggested"}</span>}
+        </button> : <span className="call-resolution">{call.resolution === "ambiguous" ? "Multiple definitions match" : "No target suggested"}</span>}
       </article>)}
       {page?.ready && page.items.length === 0 && <p className="panel-empty">No call sites in this view.</p>}
     </div>

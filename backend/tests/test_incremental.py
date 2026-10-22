@@ -128,7 +128,7 @@ def test_exact_scopes_survive_cache_and_version_change_forces_parse(client, inge
     assert [(edge["source_symbol_id"], edge["target_symbol_id"]) for edge in after_edges] == [
         (edge["source_symbol_id"], edge["target_symbol_id"]) for edge in edges]
     assert saved(client) == before
-    monkeypatch.setattr(parsing, "INDEX_FORMAT_VERSION", "2")
+    monkeypatch.setattr(parsing, "INDEX_FORMAT_VERSION", "next-version")
     with patch("app.parsing.parse_python", wraps=parsing.parse_python) as parse:
         assert client.post(prefix + "/parse").status_code == 200
         assert parse.call_count == 2

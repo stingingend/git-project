@@ -18,7 +18,7 @@ New `file_index_states` rows store the file hash, index-format version, exact or
 
 `INDEX_FORMAT_VERSION` must change when extraction, scope serialization, or same-file call matching changes. All cached files are then parsed again. Global symbol and call limits include both cached and newly extracted records.
 
-Containment and import relationships are rebuilt for the complete current inventory, including reused files. An unchanged import can therefore resolve after a module is added, or become unresolved when a target disappears. Call records can be retained because the current approximate call matcher only resolves definitions within the same file. Broader cross-file call resolution will need additional invalidation rules.
+Containment and import relationships are rebuilt for the complete current inventory, including reused files. An unchanged import can therefore resolve after a module is added, or become unresolved when a target disappears. Call IDs are retained. Since phase 15, saved lexical origins are restored before changes and cross-file targets are recalculated for the entire repository, including reused callers.
 
 Ingestion invalidates repository-wide parse, call, and relationship markers while retaining valid unchanged per-file data. Search reports `parsed: false` until parsing publishes the new markers; direct file/symbol inspection may still show retained unchanged records. Both stages retain their existing transactional rollback behavior. The worker serializes mutations; one API instance per database remains required.
 

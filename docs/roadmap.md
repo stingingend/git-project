@@ -19,7 +19,7 @@ Each milestone should work on its own and include a focused check.
 | 13 — complete | Index changes incrementally | File hashes, changed source, and stable index records |
 | 14 — complete | Introduce database migrations | Versioned schemas, upgrades, and preserving existing indexes |
 
-| 15 | Broaden approximate call resolution | Imports, receiver context, and invalidation |
+| 15 — complete | Broaden approximate call resolution | Imports, receiver context, and invalidation |
 | 16 | Add semantic symbol search | Local embeddings, storage, and ranked retrieval |
 | 17 | Answer questions with source citations | Retrieval, graph context, and optional generation |
 | 18 | Analyze change impact | Reverse dependencies and affected definitions |

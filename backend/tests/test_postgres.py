@@ -72,8 +72,8 @@ def test_postgres_index_search_graph_replacement_and_rollback(postgres_client):
     calls = client.get(prefix + f"/files/{file_id}/calls").json()
     assert calls["ready"] and calls["total"] == 1
     assert calls["items"][0]["expression"] == "work"
-    # Imported work is outside this phase's same-file definition matcher.
-    assert calls["items"][0]["resolution"] == "unresolved"
+    assert calls["items"][0]["resolution"] == "candidate"
+    assert calls["items"][0]["target"]["name"] == "work"
     # Real PostgreSQL foreign keys require edges to be deleted before symbols.
     assert client.post(prefix + "/parse").status_code == 200
     symbols = client.get(prefix + "/symbols").json()
@@ -148,3 +148,8 @@ def test_postgres_background_job_uses_its_own_sessions(postgres_client, monkeypa
 def test_postgres_incremental_diff_and_foreign_keys(postgres_client, local_clone, git_repository):
     from test_incremental import verify_diff
     verify_diff(postgres_client, git_repository)
+
+
+def test_postgres_cross_file_call_invalidation(postgres_client, local_clone, git_repository):
+    from test_cross_calls import test_unchanged_imported_calls_relink_after_target_changes
+    test_unchanged_imported_calls_relink_after_target_changes(postgres_client, local_clone, git_repository)

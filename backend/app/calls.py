@@ -1,10 +1,13 @@
-"""Approximate same-file lexical name matches, never runtime call resolution."""
+"""Approximate lexical, import, and receiver matches; never runtime call resolution."""
 from collections import defaultdict
+import ast
+from pathlib import PurePosixPath
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import aliased
 
-from .models import CallSite, CallSnapshot, FileParse, SourceFile, Symbol
+from .models import CallSite, CallSnapshot, FileParse, SourceFile, Symbol, CallOrigin
+from .relationships import module_name
 
 
 def match_calls(result):
@@ -36,13 +39,84 @@ def match_calls(result):
 
 
 def build_calls(session, repository_id, parsed_files):
+    created = []
     for file, result, symbols in parsed_files:
         for call, target, resolution in match_calls(result):
-            session.add(CallSite(repository_id=repository_id, file_id=file.id,
+            created.append(CallSite(repository_id=repository_id, file_id=file.id,
                 caller_symbol_id=symbols[call.caller_index].id if call.caller_index is not None else None,
                 target_symbol_id=symbols[target].id if target is not None else None,
                 expression=call.expression, call_type=call.call_type, resolution=resolution,
                 start_line=call.start_line, end_line=call.end_line, column=call.column))
+    session.add_all(created)
+    session.flush()
+    session.add_all([CallOrigin(call_id=call.id, target_symbol_id=call.target_symbol_id,
+                               resolution=call.resolution) for call in created])
+
+
+def resolve_repository_calls(session, repository_id, files, structure):
+    """Suggest explicit imported functions and self/cls methods; never infer types."""
+    modules = defaultdict(list)
+    definitions = defaultdict(list)
+    bindings = defaultdict(lambda: defaultdict(list))
+    parents_by_id = {}
+    for file in files:
+        modules[".".join(module_name(file.path))].append(file.id)
+    for file, parents, symbols in structure:
+        for index, symbol in enumerate(symbols):
+            parent = symbols[parents[index]] if parents[index] is not None else None
+            parents_by_id[symbol.id] = parent
+            if symbol.symbol_type in {"function", "class", "method"}:
+                definitions[(file.id, parent.id if parent else None, symbol.name)].append(symbol)
+            if symbol.symbol_type != "import" or parent is not None:
+                continue
+            try:
+                node = ast.parse(symbol.signature).body[0]
+            except (SyntaxError, ValueError, RecursionError):
+                continue
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    # Unaliased dotted imports bind their full expression prefix.
+                    bindings[file.id][alias.asname or alias.name].append((alias.name, None))
+            elif isinstance(node, ast.ImportFrom):
+                base = node.module or ""
+                if node.level:
+                    package = module_name(file.path)
+                    if PurePosixPath(file.path).name != "__init__.py":
+                        package = package[:-1]
+                    if node.level > len(package):
+                        continue
+                    base = ".".join([*package[:len(package) - node.level + 1], *([base] if base else [])])
+                for alias in node.names:
+                    if alias.name != "*":
+                        bindings[file.id][alias.asname or alias.name].append((base, alias.name))
+    calls = session.scalars(select(CallSite).where(CallSite.repository_id == repository_id))
+    for call in calls:
+        if call.resolution != "unresolved" or call.call_type == "dynamic":
+            continue
+        matches = []
+        parts = call.expression.split(".")
+        if len(parts) == 2 and parts[0] in {"self", "cls"}:
+            parent = parents_by_id.get(call.caller_symbol_id)
+            if parent is not None and parent.symbol_type == "class":
+                matches.extend(definitions.get((call.file_id, parent.id, parts[1]), []))
+        for prefix, targets in bindings[call.file_id].items():
+            for module, imported in targets:
+                name = None
+                if imported and call.expression == prefix:
+                    name = imported
+                elif not imported and call.expression.startswith(prefix + "."):
+                    suffix = call.expression[len(prefix) + 1:]
+                    if suffix.isidentifier():
+                        name = suffix
+                if name:
+                    for file_id in modules.get(module, []):
+                        matches.extend(definitions.get((file_id, None, name), []))
+        unique = {symbol.id: symbol for symbol in matches}
+        if len(unique) == 1:
+            call.target_symbol_id = next(iter(unique))
+            call.resolution = "candidate"
+        elif len(unique) > 1:
+            call.resolution = "ambiguous"
 
 
 def file_calls(session, repository_id, file_id, resolution, limit, offset):

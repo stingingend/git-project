@@ -14,7 +14,7 @@ def test_fresh_and_repeat_upgrade(database_url):
         upgrade_database(engine)
         upgrade_database(engine)
         with engine.connect() as connection:
-            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "002_job_history"
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "003_call_origins"
         assert "ix_index_jobs_repository_created" in {index["name"] for index in inspect(engine).get_indexes("index_jobs")}
     finally:
         engine.dispose()

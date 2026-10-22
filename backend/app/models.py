@@ -171,3 +171,11 @@ class JobChanges(Base):
     unchanged: Mapped[int]
     parsed_files: Mapped[int | None]
     reused_files: Mapped[int | None]
+
+
+class CallOrigin(Base):
+    __tablename__ = "call_origins"
+
+    call_id: Mapped[int] = mapped_column(ForeignKey("call_sites.id"), primary_key=True)
+    target_symbol_id: Mapped[int | None] = mapped_column(ForeignKey("symbols.id"))
+    resolution: Mapped[str] = mapped_column(String(20))
