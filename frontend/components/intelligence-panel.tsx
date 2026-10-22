@@ -56,7 +56,7 @@ export function IntelligencePanel({ repositoryId, commitSha, parsed, busy, selec
       <button className="secondary" onClick={() => void build()} disabled={busy || working || !parsed}>
         {working ? <LoaderCircle size={14} className="spin" /> : <BrainCircuit size={14} />}
         {ready ? "Update semantic index" : "Build semantic index"}</button></div>
-    <p className="intelligence-note">Embeddings run locally. The first build downloads a pinned model; your source stays on this machine.</p>
+    <p className="intelligence-note">Embeddings run on the CodeAtlas server. The first build downloads a pinned model; no external model API is required.</p>
     <div className="intelligence-tabs" role="group" aria-label="Intelligence mode">
       <button aria-pressed={mode === "search"} onClick={() => setMode("search")} disabled={working}>Semantic search</button>
       <button aria-pressed={mode === "question"} onClick={() => setMode("question")} disabled={working}>Ask repository</button>

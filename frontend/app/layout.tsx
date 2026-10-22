@@ -3,9 +3,15 @@ import "./globals.css";
 import "./theme.css";
 
 export const metadata: Metadata = {
-  title: "CodeAtlas · Understand your code",
+  title: "CodeAtlas — Find your way through the code",
   description:
-    "Explore the Python source, symbols, and structure of a public GitHub repository.",
+    "Turn a public GitHub repository into a connected map of Python code. Explore dependencies, search symbols, and investigate changes with source-backed insights.",
+  openGraph: {
+    title: "CodeAtlas — Less searching. More understanding.",
+    description:
+      "Explore the structure, find answers, and see what a change could touch.",
+    type: "website",
+  },
 };
 export default function RootLayout({
   children,

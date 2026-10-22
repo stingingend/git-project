@@ -1,0 +1,54 @@
+# Paid services: review Render's price summary before creating this Blueprint.
+services:
+  - type: pserv
+    name: codeatlas-api
+    runtime: docker
+    region: virginia
+    plan: standard
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    numInstances: 1
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: PORT
+        value: "8001"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: codeatlas-db
+          property: connectionString
+    # A disk also prevents overlapping API deployments. The local job executor
+    # requires a single live API process against this database.
+    disk:
+      name: model-cache
+      mountPath: /home/codeatlas/.cache/huggingface
+      sizeGB: 1
+  - type: web
+    name: codeatlas-web
+    runtime: docker
+    region: virginia
+    plan: starter
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /api/ready
+    numInstances: 1
+    envVars:
+      - key: API_INTERNAL_HOSTPORT
+        fromService:
+          type: pserv
+          name: codeatlas-api
+          property: hostport
+      - key: WORKSPACE_AUTH_REQUIRED
+        value: "1"
+      - key: WORKSPACE_USERNAME
+        sync: false
+      - key: WORKSPACE_PASSWORD
+        sync: false
+databases:
+  - name: codeatlas-db
+    region: virginia
+    plan: basic-256mb
+    databaseName: codeatlas
+    user: codeatlas
+    postgresMajorVersion: "17"
+    diskSizeGB: 5
+    ipAllowList: []

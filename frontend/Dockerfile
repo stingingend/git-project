@@ -6,7 +6,8 @@ RUN npm ci
 COPY . .
 # Next.js rewrites are compiled into the build, so this must be a build argument.
 ARG API_URL=http://api:8001
-ENV API_URL=${API_URL}
+ARG API_INTERNAL_HOSTPORT
+ENV API_URL=${API_URL} API_INTERNAL_HOSTPORT=${API_INTERNAL_HOSTPORT}
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runner

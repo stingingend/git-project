@@ -4,6 +4,8 @@ A code intelligence platform for public Python GitHub repositories: structural i
 
 Structural tools, local semantic search, and source-backed findings work without an external LLM or API key. Generated explanations use an optional compatible model server.
 
+The website now has a public product home at `/` and the repository tools at `/workspace`. For a hosted personal workspace, the [Render deployment guide](docs/hosting.md) covers the checked-in Blueprint, private API, database, and password gate. Creating hosted services requires a Render account and review of its paid resource summary.
+
 ## Local release: v0.21
 
 The remaining local roadmap is implemented: versioned migrations, broader call candidates, local semantic embeddings, source-cited questions, change impact, public PR reports and signed webhooks, architecture metrics, and benchmarks. Re-indexing preserves unchanged file indexes and saves run summaries. The website groups the new tools into semantic search, cited questions, impact/architecture, and PR panels.
@@ -19,7 +21,7 @@ The remaining local roadmap is implemented: versioned migrations, broader call c
 | Schema upgrades and operational checks | [Migrations](docs/migrations.md), [release](docs/release.md) |
 | Reproducible performance measurements | [Benchmarks](docs/benchmarking.md) |
 
-Public hosting, private-repository OAuth, distributed queues, and GitHub App comment publishing remain separate account/product extensions. This release runs locally and does not activate paid services or post messages.
+Private-repository OAuth, distributed queues, and GitHub App comment publishing remain separate account/product extensions. The hosting Blueprint prepares a single-owner deployment; it does not activate paid services or post messages.
 
 With Docker Desktop running, start from the repository root:
 

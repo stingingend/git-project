@@ -72,6 +72,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Verify hosted workspace access boundary
+        run: node ../scripts/smoke_hosted_web.mjs --stub-api
 
   containers:
     runs-on: ubuntu-latest
