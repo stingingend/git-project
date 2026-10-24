@@ -444,10 +444,10 @@ export default function Home() {
         <div className="content">
           <section className="page-heading">
             <div>
-              <div className="eyebrow">YOUR CODE, IN CONTEXT</div>
-              <h1>Understand what you build.</h1>
+              <div className="eyebrow">CODEATLAS / WORKSPACE</div>
+              <h1>Repository explorer</h1>
               <p>
-                A clear view of the files and symbols behind your repository.
+                Browse source, follow dependencies, and inspect changes.
               </p>
             </div>
             <div className="heading-mark" aria-hidden="true">
@@ -458,7 +458,7 @@ export default function Home() {
             <div className="connect-intro">
               <Github size={20} />
               <div>
-                <h2 id="connect-title">Bring your repository into focus</h2>
+                <h2 id="connect-title">Connect a repository</h2>
                 <p>
                   Connect a public GitHub repository to explore its Python,
                   JavaScript, TypeScript, C, and C++ source.
